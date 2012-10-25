@@ -16,14 +16,7 @@ import java.util.Set;
 import java.util.Map;
 import java.util.Vector;
 
-import com.mongodb.BasicDBObject;
-import com.mongodb.DBAddress;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.Mongo;
-import com.mongodb.WriteConcern;
-import com.mongodb.WriteResult;
+import com.mongodb.*;
 
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
@@ -38,14 +31,17 @@ import com.yahoo.ycsb.StringByteIterator;
  * mongodb.url=mongodb://localhost:27017
  * mongodb.database=ycsb
  * mongodb.writeConcern=normal
+ * mongodb.readPreference=secondaryPreferred
  *
  * @author ypai
+ * @author dnelubin
  *
  */
 public class MongoDbClient extends DB {
 
     private Mongo mongo;
     private WriteConcern writeConcern;
+    private ReadPreference readPreference;
     private String database;
 
     @Override
@@ -59,6 +55,7 @@ public class MongoDbClient extends DB {
         String url = props.getProperty("mongodb.url", "mongodb://localhost:27017");
         database = props.getProperty("mongodb.database", "ycsb");
         String writeConcernType = props.getProperty("mongodb.writeConcern", "safe").toLowerCase();
+        String readPreferenceType = props.getProperty("mongodb.readPreference", "primary").toLowerCase();
 
         if ("none".equals(writeConcernType)) {
             writeConcern = WriteConcern.NONE;
@@ -75,6 +72,23 @@ public class MongoDbClient extends DB {
                 "Must be [ none | safe | normal | fsync_safe | replicas_safe ]");
             System.exit(1);
         }
+
+        if ("primary".equals(readPreferenceType)) {
+            readPreference = ReadPreference.primary();
+        } else if ("primaryPreferred".equals(readPreferenceType)) {
+            readPreference = ReadPreference.primaryPreferred();
+        } else if ("secondary".equals(readPreferenceType)) {
+            readPreference = ReadPreference.secondary();
+        } else if ("secondaryPreferred".equals(readPreferenceType)) {
+            readPreference = ReadPreference.secondaryPreferred();
+        } else if ("nearest".equals(readPreferenceType)) {
+            readPreference = ReadPreference.nearest();
+        } else {
+            System.err.println("ERROR: Invalid readPreference: '" + readPreferenceType + "'. " +
+                    "Must be [ primary | primaryPreferred | secondary | secondaryPreferred | nearest ]");
+            System.exit(1);
+        }
+        //TODO: support tagset
 
         try {
             // strip out prefix since Java driver doesn't currently support
@@ -212,9 +226,9 @@ public class MongoDbClient extends DB {
                 while (iter.hasNext()) {
                     fieldsToReturn.put(iter.next(), 1);
                 }
-                queryResult = collection.findOne(q, fieldsToReturn);
+                queryResult = collection.findOne(q, fieldsToReturn, readPreference);
             } else {
-                queryResult = collection.findOne(q);
+                queryResult = collection.findOne(q, null, readPreference);
             }
 
             if (queryResult != null) {
@@ -297,7 +311,7 @@ public class MongoDbClient extends DB {
             // { "_id":{"$gte":startKey, "$lte":{"appId":key+"\uFFFF"}} }
             DBObject scanRange = new BasicDBObject().append("$gte", startkey);
             DBObject q = new BasicDBObject().append("_id", scanRange);
-            DBCursor cursor = collection.find(q).limit(recordcount);
+            DBCursor cursor = collection.find(q).limit(recordcount);    //TODO: apply readPreference here
             while (cursor.hasNext()) {
                 //toMap() returns a Map, but result.add() expects a Map<String,String>. Hence, the suppress warnings.
                 result.add(StringByteIterator.getByteIteratorMap((Map<String,String>)cursor.next().toMap()));
