@@ -4,7 +4,7 @@
 
 import sys,re
 
-pattern = re.compile(r'\[([^,]*)\],\s*(\d*[^\(,\d=]{3,})[^,]*,\s*([0-9\.]+)')
+pattern = re.compile(r'\[([^,]*)\],\s*(\d*[^\(,\d=]{3,})[^,]*,\s*([0-9\.Ee]+)')
 
 results = {}
 out = []
