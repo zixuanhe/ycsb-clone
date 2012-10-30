@@ -45,6 +45,7 @@ def appendSum(*keys):
 appendString('RunTime')
 appendString('Throughput')
 out.append('')
+out.append('')
 appendString('Operations')
 appendSum('Return=-1', 'Return=1')
 appendMicros('AverageLatency')
