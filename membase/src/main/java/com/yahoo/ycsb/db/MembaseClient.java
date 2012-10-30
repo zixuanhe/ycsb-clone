@@ -1,6 +1,8 @@
 package com.yahoo.ycsb.db;
 
 import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
@@ -10,11 +12,19 @@ import java.util.concurrent.Future;
 
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
+import com.yahoo.ycsb.StringByteIterator;
 import net.spy.memcached.CASResponse;
 import net.spy.memcached.MemcachedClient;
+import org.codehaus.jackson.JsonFactory;
+import org.codehaus.jackson.JsonGenerator;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.node.ObjectNode;
 
 public class MembaseClient extends DB {
 	MemcachedClient client;
+
+    protected static final ObjectMapper MAPPER = new ObjectMapper();
+
 	public static final String VERBOSE = "memcached.verbose";
 	public static final String VERBOSE_DEFAULT = "true";
 
@@ -70,18 +80,24 @@ public class MembaseClient extends DB {
 			client.shutdown();
 	}
 
-    public int add(String key, Object value) {
+    public int add(String key, HashMap<String, ByteIterator> values) {
 		try {
-			if (!client.add(key, 0, value).get().booleanValue())
+			if (!client.add(key, 0, toJson(values)).get().booleanValue())
 				return -1;
 		} catch (InterruptedException e) {
 			System.out.println("ADD Interrupted");
+            e.printStackTrace();
 		} catch (ExecutionException e) {
 			System.out.println("ADD Execution");
+            e.printStackTrace();
 		} catch (RuntimeException e) {
 			System.out.println("ADD Runtime");
-		}
-		return 0;
+            e.printStackTrace();
+		} catch (IOException e) {
+            System.out.println("ADD IO");
+            e.printStackTrace();
+        }
+        return 0;
 	}
 	
 	public int get(String key, Object value) {
@@ -261,6 +277,19 @@ public class MembaseClient extends DB {
     @Override
     public int delete(String table, String key) {
         return delete(key);
+    }
+
+    protected static String toJson(Map<String, ByteIterator> values) throws IOException {
+        ObjectNode node = MAPPER.createObjectNode();
+        HashMap<String, String> stringMap = StringByteIterator.getStringMap(values);
+        for (Map.Entry<String, String> pair : stringMap.entrySet()) {
+            node.put(pair.getKey(), pair.getValue());
+        }
+        JsonFactory jsonFactory = new JsonFactory();
+        Writer writer = new StringWriter();
+        JsonGenerator jsonGenerator = jsonFactory.createJsonGenerator(writer);
+        MAPPER.writeTree(jsonGenerator, node);
+        return writer.toString();
     }
 
 }
