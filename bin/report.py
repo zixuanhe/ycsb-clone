@@ -41,20 +41,28 @@ def appendSum(*keys):
 		if results.has_key(key):
 			s += int(results[key])
 	out.append(str(s))
+	
+def appendSub(key1, key2):
+	s = 0
+	if results.has_key(key1):
+		s += int(results[key1])
+	if results.has_key(key2):
+		s -= int(results[key2])
+	out.append(str(s))
 
 appendString('RunTime')
 appendString('Throughput')
 out.append('')
 out.append('')
 appendString('Operations')
-appendSum('Return=-1', 'Return=1')
+appendSub('Operations', 'Return=0')
 appendMicros('AverageLatency')
 appendMicros('MinLatency')
 appendMicros('MaxLatency')
 appendString('95thPercentileLatency')
 appendString('99thPercentileLatency')
 appendString('Operations_')
-appendSum('Return=-1_', 'Return=1_')
+appendSub('Operations_', 'Return=0_')
 appendMicros('AverageLatency_')
 appendMicros('MinLatency_')
 appendMicros('MaxLatency_')
