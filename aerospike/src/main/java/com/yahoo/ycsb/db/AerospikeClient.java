@@ -1,10 +1,6 @@
 package com.yahoo.ycsb.db;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.Vector;
+import java.util.*;
 
 import net.citrusleaf.CitrusleafClient;
 import net.citrusleaf.CitrusleafClient.ClResult;
@@ -15,16 +11,45 @@ import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DBException;
 
 public class AerospikeClient extends com.yahoo.ycsb.DB{
-	
-	private CitrusleafClient cl;
+
+    public static final int OK = 0;
+    public static final int NULL_RESULT = -20;
+    /**
+     *  Mapping of ClResultCodes to documented Client Return Error codes
+     *  @see http://www.aerospike.com/quick-install/documentation/troubleshooting-guide/#clientcodes
+     */
+	private static final Map<ClResultCode, Integer> RESULT_CODE_MAPPER;
+    static {
+        RESULT_CODE_MAPPER = new EnumMap<ClResultCode, Integer>(ClResultCode.class);
+
+        RESULT_CODE_MAPPER.put(ClResultCode.SERVER_ERROR, 1);
+        RESULT_CODE_MAPPER.put(ClResultCode.KEY_NOT_FOUND_ERROR, 2);
+        RESULT_CODE_MAPPER.put(ClResultCode.GENERATION_ERROR, 3);
+        RESULT_CODE_MAPPER.put(ClResultCode.PARAMETER_ERROR, 4);
+        RESULT_CODE_MAPPER.put(ClResultCode.KEY_EXISTS_ERROR, 5);
+        RESULT_CODE_MAPPER.put(ClResultCode.BIN_EXISTS_ERROR, 6);
+        RESULT_CODE_MAPPER.put(ClResultCode.CLUSTER_KEY_MISMATCH, 7);
+        RESULT_CODE_MAPPER.put(ClResultCode.SERVER_MEM_ERROR, 8);
+        RESULT_CODE_MAPPER.put(ClResultCode.TIMEOUT, 9);
+        RESULT_CODE_MAPPER.put(ClResultCode.NO_XDS, 10);
+        RESULT_CODE_MAPPER.put(ClResultCode.SERVER_NOT_AVAILABLE, 11);
+        RESULT_CODE_MAPPER.put(ClResultCode.BIN_TYPE_ERROR, 12);
+        RESULT_CODE_MAPPER.put(ClResultCode.RECORD_TOO_BIG, 13);
+        RESULT_CODE_MAPPER.put(ClResultCode.KEY_BUSY, 14);
+
+        RESULT_CODE_MAPPER.put(ClResultCode.OK, OK);
+        RESULT_CODE_MAPPER.put(ClResultCode.CLIENT_ERROR, -4);
+        RESULT_CODE_MAPPER.put(ClResultCode.SERIALIZE_ERROR, -10);
+
+        RESULT_CODE_MAPPER.put(ClResultCode.NOT_SET, -1);
+    }
+
+    private CitrusleafClient cl;
 
 	public static  String NAMESPACE = "test";
 
 	public static  String SET = "YCSB";
-	
-	public static final int OK = 0;
-	public static final int ERROR = -1;
-	
+
 	public void init() throws DBException {
 		Properties props = getProperties();
 		int port;
@@ -60,8 +85,7 @@ public class AerospikeClient extends com.yahoo.ycsb.DB{
 		try {
 			//Sleep so that the partition hashmap is created by the client
 			Thread.sleep(2000);
-		}
-		catch (InterruptedException ex) {
+		} catch (InterruptedException ex) {
 		}
 		
 		if (!cl.isConnected()) {
@@ -74,31 +98,33 @@ public class AerospikeClient extends com.yahoo.ycsb.DB{
 		public void cleanup() throws DBException {
 		cl.close();
 	}
-	@Override
+
+    @Override
 	public int read(String table, String key, Set<String> fields,
 			HashMap<String, ByteIterator> result) {
 
 		if(fields != null) {
-			for(String bin : fields) {
+			for (String bin : fields) {
 				ClResult res = cl.get(NAMESPACE, SET, key, bin, null);
 				if (res.result != null){
 					result.put(bin, new ByteArrayByteIterator(res.result.toString().getBytes()));
-				}
-				else {
-					return ERROR;
-				}
+				} else {
+					return NULL_RESULT;
+                }
+                if (res.resultCode != ClResultCode.OK) {
+                    return RESULT_CODE_MAPPER.get(res.resultCode);
+                }
 			}
-			return OK;
+            return OK;
 		}
 		else {
 			ClResult res = cl.getAll(NAMESPACE, SET, key, null);
-			if(res.resultCode == ClResultCode.OK) {
+			if (res.resultCode == ClResultCode.OK) {
 				for(Map.Entry<String, Object> entry : res.results.entrySet()) {
 					result.put(entry.getKey(), new ByteArrayByteIterator(entry.getValue().toString().getBytes()));
 				}
-				return OK;
 			}
-			return ERROR;
+			return RESULT_CODE_MAPPER.get(res.resultCode);
 		}
 	}
 
@@ -119,11 +145,8 @@ public class AerospikeClient extends com.yahoo.ycsb.DB{
 		}
 
 		ClResultCode rc = cl.set(NAMESPACE, SET, key, v, null, null);
-		if(rc == ClResultCode.OK) {
-			return OK;
-		}
 
-		return ERROR;
+		return RESULT_CODE_MAPPER.get(rc);
 	}
 
 	@Override
@@ -131,21 +154,21 @@ public class AerospikeClient extends com.yahoo.ycsb.DB{
 			HashMap<String, ByteIterator> values) {
 		Map<String, Object> v = new HashMap<String, Object>();
 
-                for (Map.Entry<String, ByteIterator> entry : values.entrySet()){
-                        v.put(entry.getKey(), entry.getValue().toString());
-                }
+        for (Map.Entry<String, ByteIterator> entry : values.entrySet()){
+            v.put(entry.getKey(), entry.getValue().toString());
+        }
 
-                ClResultCode rc = cl.set(NAMESPACE, SET, key, v, null, null);
-                if(rc == ClResultCode.OK) {
-                        return OK;
-                }
-		return ERROR;
+        ClResultCode rc = cl.set(NAMESPACE, SET, key, v, null, null);
+
+        return RESULT_CODE_MAPPER.get(rc);
 	}
 
 	@Override
 	public int delete(String table, String key) {
-		cl.delete(NAMESPACE, SET, key, null, null);
-		return 0;
+        ClResultCode rc = cl.delete(NAMESPACE, SET, key, null, null);
+        return RESULT_CODE_MAPPER.get(rc);
 	}
 
 }
+
+
