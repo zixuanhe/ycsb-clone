@@ -95,7 +95,7 @@ public class OneMeasurementTimeSeries extends OneMeasurement
 		if ( (unit>currentunit) || (forceend) )
 		{
 			double avg=((double)sum)/((double)count);
-			_measurements.add(new SeriesUnit(currentunit,avg, count/_granularity));
+			_measurements.add(new SeriesUnit(currentunit, avg, count / (_granularity / 1000.0)));
 			
 			currentunit=unit;
 			
