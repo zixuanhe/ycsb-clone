@@ -46,7 +46,13 @@ public class TextMeasurementsExporter implements MeasurementsExporter
     bw.newLine();
   }
 
-  public void close() throws IOException
+    @Override
+    public void write(String metric, String measurement, double i, double t) throws IOException {
+        bw.write("[" + metric + "], " + measurement + ", " + i + ", " + t);
+        bw.newLine();
+    }
+
+    public void close() throws IOException
   {
     this.bw.close();
   }

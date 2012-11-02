@@ -31,12 +31,14 @@ class SeriesUnit
 	 * @param time
 	 * @param average
 	 */
-	public SeriesUnit(long time, double average) {
+	public SeriesUnit(long time, double average, double throughput) {
 		this.time = time;
 		this.average = average;
+        this.throughput = throughput;
 	}
 	public long time;
-	public double average; 
+	public double average;
+    public double throughput;
 }
 
 /**
@@ -93,7 +95,7 @@ public class OneMeasurementTimeSeries extends OneMeasurement
 		if ( (unit>currentunit) || (forceend) )
 		{
 			double avg=((double)sum)/((double)count);
-			_measurements.add(new SeriesUnit(currentunit,avg));
+			_measurements.add(new SeriesUnit(currentunit,avg, count/_granularity));
 			
 			currentunit=unit;
 			
@@ -103,7 +105,7 @@ public class OneMeasurementTimeSeries extends OneMeasurement
 	}
 	
 	@Override
-	public void measure(int latency) 
+	public void measure(int latency)
 	{
 		checkEndOfUnit(false);
 		
@@ -146,7 +148,7 @@ public class OneMeasurementTimeSeries extends OneMeasurement
 
     for (SeriesUnit unit : _measurements)
     {
-      exporter.write(getName(), Long.toString(unit.time), unit.average);
+      exporter.write(getName(), Long.toString(unit.time), unit.average, unit.throughput);
     }
   }
 	
