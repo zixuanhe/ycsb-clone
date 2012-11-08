@@ -149,6 +149,8 @@ class ClientThread extends Thread
 	Object _workloadstate;
 	Properties _props;
 
+    private static final double CHECK_THROUGHPUT_INTERVAL = 100; // in milliseconds
+
 
 	/**
 	 * Constructor.
@@ -227,14 +229,23 @@ class ClientThread extends Thread
 			{
 				long st=System.currentTimeMillis();
 
+                long checkpoint_time = System.currentTimeMillis();
+                long checkpoint_ops = 0;
+
 				while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested())
 				{
+                    long current_time = System.currentTimeMillis();
+                    if(current_time - checkpoint_time > CHECK_THROUGHPUT_INTERVAL) {
+                        checkpoint_time = current_time;
+                        checkpoint_ops = 0;
+                    }
 
 					if (!_workload.doTransaction(_db,_workloadstate))
 					{
 						break;
 					}
 
+                    checkpoint_ops++;
 					_opsdone++;
 
 					//throttle the operations
@@ -244,7 +255,7 @@ class ClientThread extends Thread
 						//like sleeping for (1/target throughput)-operation latency,
 						//because it smooths timing inaccuracies (from sleep() taking an int, 
 						//current time in millis) over many operations
-						while (System.currentTimeMillis()-st<((double)_opsdone)/_target)
+						while (System.currentTimeMillis() - checkpoint_time < (checkpoint_ops / _target))
 						{
 							try
 							{
