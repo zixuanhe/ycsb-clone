@@ -1,4 +1,4 @@
-from fabric.api import run, roles, env, settings, cd
+from fabric.api import *
 from fabric.contrib.console import confirm
 
 from datetime import datetime, timedelta
@@ -55,6 +55,13 @@ def load(db):
         run(_at(_ycsbloadcmd(database, clientno)))
         #run(_at('logger LOAD'))
     clientno += 1
+
+@roles('client')
+def status():
+    with settings(hide('warnings'), warn_only=True):
+        run('tail -n 2 /var/spool/cron/atjobs/*')
+        run('ps -f -C java')
+        #TODO show tail of the .err output
 
 @roles('client')
 def kill():
