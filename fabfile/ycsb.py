@@ -1,4 +1,6 @@
-from fabric.api import run, roles, env, prompt
+from fabric.api import run, roles, env, settings
+from fabric.contrib.console import confirm
+
 from datetime import datetime
 
 import sys, os
@@ -51,6 +53,6 @@ def load(database):
 
 @roles('client')
 def kill():
-    confirm = prompt("Type 'kill' if you want to kill Java on clients:")
-    if (confirm == 'kill'):
-        run('killall java')
+    if confirm("Do you want to kill Java on the client?"):
+        with settings(warn_only=True):
+            run('killall java')
