@@ -1,4 +1,4 @@
-from fabric.api import run, roles, env
+from fabric.api import run, roles, env, prompt
 from datetime import datetime
 
 import sys, os
@@ -48,3 +48,9 @@ def load(database):
     global clientno
     run('echo %s' % _ycsbloadcmd(database, clientno))
     clientno += 1
+
+@roles('client')
+def kill():
+    confirm = prompt("Type 'kill' if you want to kill Java on clients:")
+    if (confirm == 'kill'):
+        run('killall java')
