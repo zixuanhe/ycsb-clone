@@ -227,17 +227,15 @@ class ClientThread extends Thread
 		{
 			if (_dotransactions)
 			{
-				long st=System.currentTimeMillis();
-
-                long checkpoint_time = System.currentTimeMillis();
-                long checkpoint_ops = 0;
+                long interval_time = System.currentTimeMillis();
+                long interval_ops = 0;
 
 				while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested())
 				{
                     long current_time = System.currentTimeMillis();
-                    if(current_time - checkpoint_time > CHECK_THROUGHPUT_INTERVAL) {
-                        checkpoint_time = current_time;
-                        checkpoint_ops = 0;
+                    if(current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
+                        interval_time = current_time;
+                        interval_ops = 0;
                     }
 
 					if (!_workload.doTransaction(_db,_workloadstate))
@@ -245,7 +243,7 @@ class ClientThread extends Thread
 						break;
 					}
 
-                    checkpoint_ops++;
+                    interval_ops++;
 					_opsdone++;
 
 					//throttle the operations
@@ -255,7 +253,7 @@ class ClientThread extends Thread
 						//like sleeping for (1/target throughput)-operation latency,
 						//because it smooths timing inaccuracies (from sleep() taking an int, 
 						//current time in millis) over many operations
-						while (System.currentTimeMillis() - checkpoint_time < (checkpoint_ops / _target))
+						while (System.currentTimeMillis() - interval_time < (interval_ops / _target))
 						{
 							try
 							{
