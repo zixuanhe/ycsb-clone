@@ -47,6 +47,22 @@ def _ycsbloadcmd(database, clientno):
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
 
+def _ycsbruncmd(database, workload, target):
+    cmd = workloads.root + '/bin/ycsb run -s'
+    for file in workload['propertyfiles']:
+        cmd += ' -P %s' % file
+    for (key, value) in database['properties'].items():
+        cmd += ' -p %s=%s' % (key, value)
+    for (key, value) in workloads.data.items():
+        cmd += ' -p %s=%s' % (key, value)
+    if target != None:
+        cmd += ' -target %s' % str(target)
+    outfile = _outfilename(database['name'], workload['name'], 'out')
+    errfile = _outfilename(database['name'], workload['name'], 'err')
+    cmd += ' > %s/%s' % (database['home'], outfile)
+    cmd += ' 2> %s/%s' % (database['home'], errfile)
+    return cmd
+
 @roles('client')
 def load(db):
     global clientno
@@ -54,6 +70,15 @@ def load(db):
     with cd(database['home']):
         run(_at(_ycsbloadcmd(database, clientno)))
         #run(_at('logger LOAD'))
+    clientno += 1
+
+@roles('client')
+def workload(db, workload, target=None):
+    global clientno
+    database = _getdb(db)
+    load = _getworkload(workload)
+    with cd(database['home']):
+        run('echo ' + _at(_ycsbruncmd(database, load, target)))
     clientno += 1
 
 @roles('client')
