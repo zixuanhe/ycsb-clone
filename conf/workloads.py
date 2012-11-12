@@ -2,6 +2,8 @@ root = '/opt/ycsb'
 
 data = {
     'recordcount': 2000000000,
+    'fieldcount': 10,
+    'fieldlength': 10,
     'operationscount': 10000000,
     'threadcount': 16,
 }
