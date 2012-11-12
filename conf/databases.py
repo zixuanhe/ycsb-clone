@@ -3,8 +3,8 @@ databases = {
     'aerospike' : {
         'name': 'aerospike',
         'home': '/home/aerospike',
+        'command': 'aerospike',
         'properties': {
-            'db': 'com.yahoo.ycsb.db.AerospikeClient',
             'host': 'r1.citrusleaf.local',
             'port': 3000,
             'ns': 'test',
@@ -15,8 +15,8 @@ databases = {
     'couchbase' : {
         'name': 'couchbase',
         'home': '/home/couchbase',
+        'command': 'couchbase',
         'properties': {
-            'db': 'com.yahoo.ycsb.couchbase.CouchbaseClient1_8',
             'couchbase.hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
             'couchbase.bucket': 'test',
             'couchbase.user': '',
@@ -30,8 +30,8 @@ databases = {
     'cassandra' : {
         'name': 'cassandra',
         'home': '/home/cassandra',
+        'command': 'cassandra-10',
         'properties': {
-            'db': 'com.yahoo.ycsb.db.CassandraClient10',
             'hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
         }
     },
@@ -39,8 +39,8 @@ databases = {
     'mongodb' : {
         'name': 'mongodb',
         'home': '/home/mongo',
+        'command': 'mongodb',
         'properties': {
-            'db': 'com.yahoo.ycsb.db.MongoDbClient',
             'mongodb.url': 'mongodb://localhost:27017',
             'mongodb.database': 'ycsb',
             'mongodb.writeConcern': 'normal',

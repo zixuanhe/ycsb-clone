@@ -32,7 +32,7 @@ def _at(cmd, time=timestamp):
     return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))
 
 def _ycsbloadcmd(database, clientno):
-    cmd = workloads.root + '/bin/ycsb load -s'
+    cmd = workloads.root + '/bin/ycsb load %s -s' % database['command']
     for (key, value) in database['properties'].items():
         cmd += ' -p %s=%s' % (key, value)
     for (key, value) in workloads.data.items():
@@ -48,7 +48,7 @@ def _ycsbloadcmd(database, clientno):
     return cmd
 
 def _ycsbruncmd(database, workload, target):
-    cmd = workloads.root + '/bin/ycsb run -s'
+    cmd = workloads.root + '/bin/ycsb run %s -s' % database['command']
     for file in workload['propertyfiles']:
         cmd += ' -P %s' % file
     for (key, value) in database['properties'].items():
@@ -78,7 +78,7 @@ def workload(db, workload, target=None):
     database = _getdb(db)
     load = _getworkload(workload)
     with cd(database['home']):
-        run('echo ' + _at(_ycsbruncmd(database, load, target)))
+        run('echo ' + _at(_ycsbruncmd(database, load, target)))     #TODO: divide target to the number of clients
     clientno += 1
 
 @roles('client')
