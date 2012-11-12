@@ -23,7 +23,7 @@ def _getworkload(workload):
         raise Exception("unconfigured workload '%s'" % workload)
     return workloads.workloads[workload]
 
-def _outfilename(databasename, workloadname, extension):
+def _outfilename(databasename, workloadname, extension):    #TODO add target to the file name
     global timestamp
     timestampstr = timestamp.strftime('%Y-%m-%d_%H-%M')
     return '%s_%s_%s.%s' % (timestampstr, databasename, workloadname, extension)
@@ -47,7 +47,7 @@ def _ycsbloadcmd(database, clientno):
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
 
-def _ycsbruncmd(database, workload, target):
+def _ycsbruncmd(database, workload, target=None):
     cmd = workloads.root + '/bin/ycsb run %s -s' % database['command']
     for file in workload['propertyfiles']:
         cmd += ' -P %s' % file
@@ -69,7 +69,6 @@ def load(db):
     database = _getdb(db)
     with cd(database['home']):
         run(_at(_ycsbloadcmd(database, clientno)))
-        #run(_at('logger LOAD'))
     clientno += 1
 
 @roles('client')
@@ -78,7 +77,10 @@ def workload(db, workload, target=None):
     database = _getdb(db)
     load = _getworkload(workload)
     with cd(database['home']):
-        run('echo ' + _at(_ycsbruncmd(database, load, target)))     #TODO: divide target to the number of clients
+        if target != None:
+            run(_at(_ycsbruncmd(database, load, int(target) / totalclients)))
+        else:
+            run(_at(_ycsbruncmd(database, load)))
     clientno += 1
 
 @roles('client')
