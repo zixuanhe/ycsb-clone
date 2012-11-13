@@ -122,7 +122,7 @@ public abstract class DB
 	 * @param table The name of the table
 	 * @param key The record key of the record to insert.
 	 * @param values A HashMap of field/value pairs to insert in the record
-	 * @return Zero on success, a non-zero error code on error.  See this class's description for a discussion of error codes.
+	 * @return Zero on success, a negative non-zero error code on error, and a positive non-zero error code on retry. See this class's description for a discussion of error codes.
 	 */
 	public abstract int insert(String table, String key, HashMap<String,ByteIterator> values);
 

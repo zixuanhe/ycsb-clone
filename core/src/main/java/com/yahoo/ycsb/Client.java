@@ -1,12 +1,12 @@
-/**                                                                                                                                                                                
+/**
  * Copyright (c) 2010 Yahoo! Inc. All rights reserved.                                                                                                                             
- *                                                                                                                                                                                 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you                                                                                                             
  * may not use this file except in compliance with the License. You                                                                                                                
  * may obtain a copy of the License at                                                                                                                                             
- *                                                                                                                                                                                 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0                                                                                                                                      
- *                                                                                                                                                                                 
+ *
  * Unless required by applicable law or agreed to in writing, software                                                                                                             
  * distributed under the License is distributed on an "AS IS" BASIS,                                                                                                               
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or                                                                                                                 
@@ -30,7 +30,7 @@ import com.yahoo.ycsb.measurements.exporter.TextMeasurementsExporter;
 
 /**
  * A thread to periodically show the status of the experiment, to reassure you that progress is being made.
- * 
+ *
  * @author cooperb
  *
  */
@@ -39,11 +39,11 @@ class StatusThread extends Thread
 	Vector<Thread> _threads;
 	String _label;
 	boolean _standardstatus;
-	
+
 	/**
 	 * The interval for reporting status.
 	 */
-	public static final long sleeptime=10000;
+	public static final long sleeptime = 2000;
 
 	public StatusThread(Vector<Thread> threads, String label, boolean standardstatus)
 	{
@@ -61,10 +61,10 @@ class StatusThread extends Thread
 
 		long lasten=st;
 		long lasttotalops=0;
-		
+
 		boolean alldone;
 
-		do 
+		do
 		{
 			alldone=true;
 
@@ -88,12 +88,12 @@ class StatusThread extends Thread
 			//double throughput=1000.0*((double)totalops)/((double)interval);
 
 			double curthroughput=1000.0*(((double)(totalops-lasttotalops))/((double)(en-lasten)));
-			
+
 			lasttotalops=totalops;
 			lasten=en;
-			
+
 			DecimalFormat d = new DecimalFormat("#.##");
-			
+
 			if (totalops==0)
 			{
 				System.err.println(_label+" "+(interval/1000)+" sec: "+totalops+" operations; "+Measurements.getMeasurements().getSummary());
@@ -131,7 +131,7 @@ class StatusThread extends Thread
 
 /**
  * A thread for executing transactions or data inserts to the database.
- * 
+ *
  * @author cooperb
  *
  */
@@ -154,12 +154,12 @@ class ClientThread extends Thread
 
 	/**
 	 * Constructor.
-	 * 
+	 *
 	 * @param db the DB implementation to use
 	 * @param dotransactions true to do transactions, false to insert data
 	 * @param workload the workload to use
-	 * @param threadid the id of this thread 
-	 * @param threadcount the total number of threads 
+	 * @param threadid the id of this thread
+	 * @param threadcount the total number of threads
 	 * @param props the properties defining the experiment
 	 * @param opcount the number of operations (transactions or inserts) to do
 	 * @param targetperthreadperms target number of operations per thread per ms
@@ -176,7 +176,6 @@ class ClientThread extends Thread
 		_threadid=threadid;
 		_threadcount=threadcount;
 		_props=props;
-		//System.out.println("Interval = "+interval);
 	}
 
 	public int getOpsDone()
@@ -199,7 +198,7 @@ class ClientThread extends Thread
 
 		try
 		{
-			_workloadstate=_workload.initThread(_props,_threadid,_threadcount);
+			_workloadstate = _workload.initThread(_props,_threadid,_threadcount);
 		}
 		catch (WorkloadException e)
 		{
@@ -213,7 +212,7 @@ class ClientThread extends Thread
 		{
 		   //GH issue 4 - throws exception if _target>1 because random.nextInt argument must be >0
 		   //and the sleep() doesn't make sense for granularities < 1 ms anyway
-		   if ( (_target>0) && (_target<=1.0) ) 
+		   if ( (_target>0) && (_target<=1.0) )
 		   {
 		      sleep(Utils.random().nextInt((int)(1.0/_target)));
 		   }
@@ -222,14 +221,14 @@ class ClientThread extends Thread
 		{
 		  // do nothing.
 		}
-		
+
 		try
 		{
+            long interval_time = System.currentTimeMillis();
+            long interval_ops = 0;
+
 			if (_dotransactions)
 			{
-                long interval_time = System.currentTimeMillis();
-                long interval_ops = 0;
-
 				while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested())
 				{
                     long current_time = System.currentTimeMillis();
@@ -251,7 +250,7 @@ class ClientThread extends Thread
 					{
 						//this is more accurate than other throttling approaches we have tried,
 						//like sleeping for (1/target throughput)-operation latency,
-						//because it smooths timing inaccuracies (from sleep() taking an int, 
+						//because it smooths timing inaccuracies (from sleep() taking an int,
 						//current time in millis) over many operations
 						while (System.currentTimeMillis() - interval_time < (interval_ops / _target))
 						{
@@ -270,28 +269,44 @@ class ClientThread extends Thread
 			}
 			else
 			{
-				long st=System.currentTimeMillis();
+                boolean isRetry = false;
 
 				while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested())
 				{
+                    long current_time = System.currentTimeMillis();
+                    if(current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
+                        interval_time = current_time;
+                        interval_ops = 0;
+                    }
 
-					if (!_workload.doInsert(_db,_workloadstate))
-					{
-						break;
-					}
-
-					_opsdone++;
+					switch(_workload.doInsert(_db, _workloadstate, isRetry)) {
+                        case OK: {
+                            interval_ops ++;
+                            _opsdone ++;
+                            isRetry = false;
+                            break;
+                        }
+                        case FAIL: {
+                            _workload.requestStop();
+                            break;
+                        }
+                        case RETRY: {
+                            interval_ops ++;
+                            isRetry = true;
+                            break;
+                        }
+                    }
 
 					//throttle the operations
 					if (_target>0)
 					{
 						//this is more accurate than other throttling approaches we have tried,
 						//like sleeping for (1/target throughput)-operation latency,
-						//because it smooths timing inaccuracies (from sleep() taking an int, 
+						//because it smooths timing inaccuracies (from sleep() taking an int,
 						//current time in millis) over many operations
-						while (System.currentTimeMillis()-st<((double)_opsdone)/_target)
+                        while (System.currentTimeMillis() - interval_time < (interval_ops / _target))
 						{
-							try 
+							try
 							{
 								sleep(1);
 							}
@@ -308,7 +323,6 @@ class ClientThread extends Thread
 		{
 			e.printStackTrace();
 			e.printStackTrace(System.out);
-			System.exit(0);
 		}
 
 		try
@@ -319,7 +333,6 @@ class ClientThread extends Thread
 		{
 			e.printStackTrace();
 			e.printStackTrace(System.out);
-			return;
 		}
 	}
 }
@@ -335,14 +348,14 @@ public class Client
 	public static final String RECORD_COUNT_PROPERTY="recordcount";
 
 	public static final String WORKLOAD_PROPERTY="workload";
-	
+
 	/**
 	 * Indicates how many inserts to do, if less than recordcount. Useful for partitioning
 	 * the load among multiple servers, if the client is the bottleneck. Additionally, workloads
 	 * should support the "insertstart" property, which tells them which record to start at.
 	 */
 	public static final String INSERT_COUNT_PROPERTY="insertcount";
-	
+
 	/**
    * The maximum amount of time (in seconds) for which the benchmark will be run.
    */
@@ -436,7 +449,7 @@ public class Client
 			}
 		}
 	}
-	
+
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args)
 	{
@@ -547,7 +560,7 @@ public class Client
 				for (Enumeration e=myfileprops.propertyNames(); e.hasMoreElements(); )
 				{
 				   String prop=(String)e.nextElement();
-				   
+
 				   fileprops.setProperty(prop,myfileprops.getProperty(prop));
 				}
 
@@ -601,7 +614,7 @@ public class Client
 		for (Enumeration e=props.propertyNames(); e.hasMoreElements(); )
 		{
 		   String prop=(String)e.nextElement();
-		   
+
 		   fileprops.setProperty(prop,props.getProperty(prop));
 		}
 
@@ -611,21 +624,21 @@ public class Client
 		{
 			System.exit(0);
 		}
-		
+
 		long maxExecutionTime = Integer.parseInt(props.getProperty(MAX_EXECUTION_TIME, "0"));
 
 		//get number of threads, target and db
 		threadcount=Integer.parseInt(props.getProperty("threadcount","1"));
 		dbname=props.getProperty("db","com.yahoo.ycsb.BasicDB");
 		target=Integer.parseInt(props.getProperty("target","0"));
-		
+
 		//compute the target throughput
 		double targetperthreadperms=-1;
 		if (target>0)
 		{
 			double targetperthread=((double)target)/((double)threadcount);
 			targetperthreadperms=targetperthread/1000.0;
-		}	 
+		}
 
 		System.out.println("YCSB Client 0.1");
 		System.out.print("Command line:");
@@ -635,11 +648,11 @@ public class Client
 		}
 		System.out.println();
 		System.err.println("Loading workload...");
-		
+
 		//show a warning message that creating the workload is taking a while
-		//but only do so if it is taking longer than 2 seconds 
+		//but only do so if it is taking longer than 2 seconds
 		//(showing the message right away if the setup wasn't taking very long was confusing people)
-		Thread warningthread=new Thread() 
+		Thread warningthread=new Thread()
 		{
 			public void run()
 			{
@@ -656,23 +669,23 @@ public class Client
 		};
 
 		warningthread.start();
-		
+
 		//set up measurements
 		Measurements.setProperties(props);
-		
+
 		//load the workload
 		ClassLoader classLoader = Client.class.getClassLoader();
 
 		Workload workload=null;
 
-		try 
+		try
 		{
 			Class workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
 
 			workload=(Workload)workloadclass.newInstance();
 		}
-		catch (Exception e) 
-		{  
+		catch (Exception e)
+		{
 			e.printStackTrace();
 			e.printStackTrace(System.out);
 			System.exit(0);
@@ -688,7 +701,7 @@ public class Client
 			e.printStackTrace(System.out);
 			System.exit(0);
 		}
-		
+
 		warningthread.interrupt();
 
 		//run the workload
@@ -738,10 +751,10 @@ public class Client
 		if (status)
 		{
 			boolean standardstatus=false;
-			if (props.getProperty("measurementtype","").compareTo("timeseries")==0) 
+			if (props.getProperty("measurementtype","").compareTo("timeseries")==0)
 			{
 				standardstatus=true;
-			}	
+			}
 			statusthread=new StatusThread(threads,label,standardstatus);
 			statusthread.start();
 		}
@@ -752,14 +765,14 @@ public class Client
 		{
 			t.start();
 		}
-		
+
     Thread terminator = null;
-    
+
     if (maxExecutionTime > 0) {
       terminator = new TerminatorThread(maxExecutionTime, threads, workload);
       terminator.start();
     }
-    
+
     int opsDone = 0;
 
 		for (Thread t : threads)
@@ -775,7 +788,7 @@ public class Client
 		}
 
 		long en=System.currentTimeMillis();
-		
+
 		if (terminator != null && !terminator.isInterrupted()) {
       terminator.interrupt();
     }

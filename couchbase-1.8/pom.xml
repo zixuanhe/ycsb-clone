@@ -80,6 +80,7 @@
                         <argument>-P</argument>
                         <argument>../workloads/workloada-couchbase</argument>
                         <argument>-load</argument>
+                        <argument>-s</argument>
                     </arguments>
                 </configuration>
             </plugin>

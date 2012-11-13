@@ -64,7 +64,7 @@ public abstract class Workload
        */
       public Object initThread(Properties p, int mythreadid, int threadcount) throws WorkloadException
       {
-	 return null;
+	    return new ThreadState();
       }
       
       /**
@@ -82,6 +82,8 @@ public abstract class Workload
        * synchronized, since each thread has its own threadstate instance.
        */
       public abstract boolean doInsert(DB db, Object threadstate);
+
+      public abstract OperationStatus doInsert(DB db, Object threadstate, boolean isRetry);
       
       /**
        * Do one transaction operation. Because it will be called concurrently from multiple client threads, this 
