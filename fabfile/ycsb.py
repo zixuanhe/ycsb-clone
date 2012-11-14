@@ -65,6 +65,7 @@ def _ycsbruncmd(database, workload, target=None):
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
 
+
 @roles('client')
 def load(db):
     """Starts loading of data to the database"""
@@ -87,7 +88,6 @@ def workload(db, workload, target=None):
             run(_at(_ycsbruncmd(database, load)))
     clientno += 1
 
-
 @roles('client')
 def status(db):
     """Shows status of the currently running YCSBs"""
@@ -101,13 +101,12 @@ def status(db):
         database = _getdb(db)
         with(cd(database['home'])):
             # sort the output of ls by date, the first entry should be the *.err needed
-            ls = run('ls --format single-column --sort=t').split("\r\n")
-            log = ls[0]
-            tail = run('tail %s' % log)
-            print 'Log: %s' % log
+            ls = run('ls --format single-column --sort=t *.err').split("\r\n")
+            logfile = ls[0]
+            tail = run('tail %s' % logfile)
+            print 'Log: %s' % logfile
             print tail
             print   # skip the line for convenience
-
 
 @roles('client')
 def kill():
