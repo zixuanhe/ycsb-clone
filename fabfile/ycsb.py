@@ -67,6 +67,7 @@ def _ycsbruncmd(database, workload, target=None):
 
 @roles('client')
 def load(db):
+    """Starts loading of data to the database"""
     global clientno
     database = _getdb(db)
     with cd(database['home']):
@@ -75,8 +76,8 @@ def load(db):
 
 @roles('client')
 def workload(db, workload, target=None):
+    """Starts running of the workload"""
     global clientno
-    
     database = _getdb(db)
     load = _getworkload(workload)
     with cd(database['home']):
@@ -89,23 +90,28 @@ def workload(db, workload, target=None):
 
 @roles('client')
 def status(db):
-    """ show tail of the .err output """
-    with settings(hide('running', 'stdout', 'stderr'), warn_only=True):
-        # fabric.state.output['running'] = False
-        # env.output_prefix = False
+    """Shows status of the currently running YCSBs"""
+    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+        print 'Scheduled:'
+        print run('tail -n 2 /var/spool/cron/atjobs/*')
+        print
+        print 'Running:'
+        print run('ps -f -C java')
+        print
         database = _getdb(db)
         with(cd(database['home'])):
-            #run('tail -n 2 /var/spool/cron/atjobs/*')
-            #run('ps -f -C java')
-            # sort the ouptput of ls by date, the first entry should be the *.err needed
+            # sort the output of ls by date, the first entry should be the *.err needed
             ls = run('ls --format single-column --sort=t').split("\r\n")
-            tail = run('tail %s' % ls[0])
-            print(tail)
-            print('') # skip the line for convenience
+            log = ls[0]
+            tail = run('tail %s' % log)
+            print 'Log: %s' % log
+            print tail
+            print   # skip the line for convenience
 
 
 @roles('client')
 def kill():
+    """Kills YCSB processes"""
     with settings(warn_only=True):
         run('ps -f -C java')
         if confirm("Do you want to kill Java on the client?"):
