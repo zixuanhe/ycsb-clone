@@ -1,3 +1,4 @@
+import fabric
 from fabric.api import *
 from fabric.contrib.console import confirm
 
@@ -6,6 +7,7 @@ from datetime import datetime, timedelta
 import sys, os
 sys.path.append(os.path.dirname(__file__) + '/../conf/')
 import hosts, workloads, databases
+from pdb import set_trace
 
 totalclients = len(env.roledefs['client'])
 clientno = 0
@@ -74,6 +76,7 @@ def load(db):
 @roles('client')
 def workload(db, workload, target=None):
     global clientno
+    
     database = _getdb(db)
     load = _getworkload(workload)
     with cd(database['home']):
@@ -83,12 +86,23 @@ def workload(db, workload, target=None):
             run(_at(_ycsbruncmd(database, load)))
     clientno += 1
 
+
 @roles('client')
-def status():
-    with settings(hide('warnings'), warn_only=True):
-        run('tail -n 2 /var/spool/cron/atjobs/*')
-        run('ps -f -C java')
-        #TODO show tail of the .err output
+def status(db):
+    """ show tail of the .err output """
+    with settings(hide('running', 'stdout', 'stderr'), warn_only=True):
+        # fabric.state.output['running'] = False
+        # env.output_prefix = False
+        database = _getdb(db)
+        with(cd(database['home'])):
+            #run('tail -n 2 /var/spool/cron/atjobs/*')
+            #run('ps -f -C java')
+            # sort the ouptput of ls by date, the first entry should be the *.err needed
+            ls = run('ls --format single-column --sort=t').split("\r\n")
+            tail = run('tail %s' % ls[0])
+            print(tail)
+            print('') # skip the line for convenience
+
 
 @roles('client')
 def kill():
