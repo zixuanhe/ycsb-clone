@@ -25,10 +25,13 @@ def _getworkload(workload):
         raise Exception("unconfigured workload '%s'" % workload)
     return workloads.workloads[workload]
 
-def _outfilename(databasename, workloadname, extension):    #TODO add target to the file name
+def _outfilename(databasename, workloadname, extension, target=None):
     global timestamp
     timestampstr = timestamp.strftime('%Y-%m-%d_%H-%M')
-    return '%s_%s_%s.%s' % (timestampstr, databasename, workloadname, extension)
+    if target == None:
+        return '%s_%s_%s.%s' % (timestampstr, databasename, workloadname, extension)
+    else:
+        return '%s_%s_%s_%s.%s' % (timestampstr, databasename, workloadname, str(target), extension)
 
 def _at(cmd, time=timestamp):
     return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))
@@ -59,8 +62,8 @@ def _ycsbruncmd(database, workload, target=None):
         cmd += ' -p %s=%s' % (key, value)
     if target != None:
         cmd += ' -target %s' % str(target)
-    outfile = _outfilename(database['name'], workload['name'], 'out')
-    errfile = _outfilename(database['name'], workload['name'], 'err')
+    outfile = _outfilename(database['name'], workload['name'], 'out', target)
+    errfile = _outfilename(database['name'], workload['name'], 'err', target)
     cmd += ' > %s/%s' % (database['home'], outfile)
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
