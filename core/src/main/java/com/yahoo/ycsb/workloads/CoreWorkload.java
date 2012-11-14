@@ -453,30 +453,6 @@ public class CoreWorkload extends Workload
 	 * other, and it will be difficult to reach the target throughput. Ideally, this function would have no side
 	 * effects other than DB operations.
 	 */
-	public OperationStatus doInsert(DB db, Object threadstate, boolean isRetry)
-	{
-        String dbkey;
-        HashMap<String, ByteIterator> values;
-        ThreadState ts = (ThreadState) threadstate;
-        if(isRetry) {
-            dbkey = ts.getKey();
-            values = ts.getValues();
-        } else {
-		    dbkey = buildKeyName(keysequence.nextInt());
-		    values = buildValues();
-            ts.setKey(dbkey);
-            ts.setValues(values);
-        }
-        int res = db.insert(table,dbkey,values);
-        if (res == 0) {
-			return OperationStatus.OK;
-        } else if (res > 0) {
-            return OperationStatus.RETRY;
-        } else {
-            return OperationStatus.FAIL;
-        }
-	}
-
     public boolean doInsert(DB db, Object threadstate)
     {
         String dbkey = buildKeyName(keysequence.nextInt());

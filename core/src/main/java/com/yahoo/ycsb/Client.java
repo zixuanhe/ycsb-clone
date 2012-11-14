@@ -129,6 +129,10 @@ class StatusThread extends Thread
 	}
 }
 
+interface OperationHandler {
+    boolean doOperation(DB _db, Object _workloadstate);
+}
+
 /**
  * A thread for executing transactions or data inserts to the database.
  *
@@ -224,100 +228,23 @@ class ClientThread extends Thread
 
 		try
 		{
-            long interval_time = System.currentTimeMillis();
-            long interval_ops = 0;
-
 			if (_dotransactions)
 			{
-				while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested())
-				{
-                    long current_time = System.currentTimeMillis();
-                    if(current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
-                        interval_time = current_time;
-                        interval_ops = 0;
+                run(new OperationHandler() {
+                    @Override
+                    public boolean doOperation(DB db, Object workloadstate) {
+                        return _workload.doTransaction(db, workloadstate);
                     }
-
-					if (!_workload.doTransaction(_db,_workloadstate))
-					{
-						break;
-					}
-
-                    interval_ops++;
-					_opsdone++;
-
-					//throttle the operations
-					if (_target>0)
-					{
-						//this is more accurate than other throttling approaches we have tried,
-						//like sleeping for (1/target throughput)-operation latency,
-						//because it smooths timing inaccuracies (from sleep() taking an int,
-						//current time in millis) over many operations
-						while (System.currentTimeMillis() - interval_time < (interval_ops / _target))
-						{
-							try
-							{
-								sleep(1);
-							}
-							catch (InterruptedException e)
-							{
-							  // do nothing.
-							}
-
-						}
-					}
-				}
-			}
-			else
-			{
-                boolean isRetry = false;
-
-				while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested())
-				{
-                    long current_time = System.currentTimeMillis();
-                    if(current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
-                        interval_time = current_time;
-                        interval_ops = 0;
+                });
+			} else {
+                run(new OperationHandler() {
+                    @Override
+                    public boolean doOperation(DB db, Object workloadstate) {
+                        return _workload.doInsert(db, workloadstate);
                     }
+                });
+            }
 
-					switch(_workload.doInsert(_db, _workloadstate, isRetry)) {
-                        case OK: {
-                            interval_ops ++;
-                            _opsdone ++;
-                            isRetry = false;
-                            break;
-                        }
-                        case FAIL: {
-                            _workload.requestStop();
-                            break;
-                        }
-                        case RETRY: {
-                            interval_ops ++;
-                            isRetry = true;
-                            break;
-                        }
-                    }
-
-					//throttle the operations
-					if (_target>0)
-					{
-						//this is more accurate than other throttling approaches we have tried,
-						//like sleeping for (1/target throughput)-operation latency,
-						//because it smooths timing inaccuracies (from sleep() taking an int,
-						//current time in millis) over many operations
-                        while (System.currentTimeMillis() - interval_time < (interval_ops / _target))
-						{
-							try
-							{
-								sleep(1);
-							}
-							catch (InterruptedException e)
-							{
-							  // do nothing.
-							}
-						}
-					}
-				}
-			}
 		}
 		catch (Exception e)
 		{
@@ -335,7 +262,42 @@ class ClientThread extends Thread
 			e.printStackTrace(System.out);
 		}
 	}
+
+    private void run(OperationHandler handler) {
+        long interval_time = System.currentTimeMillis();
+        long interval_ops = 0;
+        while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested()) {
+            long current_time = System.currentTimeMillis();
+            if (current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
+                interval_time = current_time;
+                interval_ops = 0;
+            }
+
+            if (!handler.doOperation(_db, _workloadstate)) {
+                break;
+            }
+
+            interval_ops++;
+            _opsdone++;
+
+            //throttle the operations
+            if (_target > 0) {
+                //this is more accurate than other throttling approaches we have tried,
+                //like sleeping for (1/target throughput)-operation latency,
+                //because it smooths timing inaccuracies (from sleep() taking an int,
+                //current time in millis) over many operations
+                while (System.currentTimeMillis() - interval_time < (interval_ops / _target)) {
+                    try {
+                        sleep(1);
+                    } catch (InterruptedException e) {
+                        // do nothing.
+                    }
+                }
+            }
+        }
+    }
 }
+
 
 /**
  * Main class for executing YCSB.

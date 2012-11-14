@@ -32,10 +32,23 @@ public class DBWrapper extends DB
 	DB _db;
 	Measurements _measurements;
 
-	public DBWrapper(DB db)
+    private static final String READ_RETRY_PROPERTY = "readretrycount";
+    private static final String UPDATE_RETRY_PROPERTY = "updateretrycount";
+    private static final String INSERT_RETRY_PROPERTY = "insertretrycount";
+
+    private int readRetryCount;
+    private int updateRetryCount;
+    private int insertRetryCount;
+
+
+	public DBWrapper(DB db, Properties p)
 	{
 		_db=db;
 		_measurements=Measurements.getMeasurements();
+
+        readRetryCount = Integer.parseInt(p.getProperty(READ_RETRY_PROPERTY, "0"));
+        updateRetryCount = Integer.parseInt(p.getProperty(UPDATE_RETRY_PROPERTY, "0"));
+        insertRetryCount = Integer.parseInt(p.getProperty(INSERT_RETRY_PROPERTY, "0"));
 	}
 
 	/**
@@ -85,6 +98,9 @@ public class DBWrapper extends DB
 	{
 		long st=System.nanoTime();
 		int res=_db.read(table,key,fields,result);
+        for(int retryCount = 0; res != 0 && retryCount < readRetryCount; retryCount++) {
+            res = _db.read(table,key,fields,result);
+        }
 		long en=System.nanoTime();
 		_measurements.measure("READ",(int)((en-st)/1000));
 		_measurements.reportReturnCode("READ",res);
@@ -124,6 +140,9 @@ public class DBWrapper extends DB
 	{
 		long st=System.nanoTime();
 		int res=_db.update(table,key,values);
+        for(int retryCount = 0; res != 0 && retryCount < updateRetryCount; retryCount++) {
+            res = _db.update(table, key, values);
+        }
 		long en=System.nanoTime();
 		_measurements.measure("UPDATE",(int)((en-st)/1000));
 		_measurements.reportReturnCode("UPDATE",res);
@@ -143,6 +162,9 @@ public class DBWrapper extends DB
 	{
 		long st=System.nanoTime();
 		int res=_db.insert(table,key,values);
+        for(int retryCount = 0; res != 0 && retryCount < insertRetryCount; retryCount++) {
+            res = _db.insert(table, key, values);
+        }
 		long en=System.nanoTime();
 		_measurements.measure("INSERT",(int)((en-st)/1000));
 		_measurements.reportReturnCode("INSERT",res);
