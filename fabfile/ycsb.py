@@ -1,14 +1,12 @@
-import fabric
+import re, time, os
+from datetime import datetime, timedelta
+from pdb import set_trace
+
 from fabric.api import *
 from fabric.colors import green, blue
 from fabric.contrib.console import confirm
 
-from datetime import datetime, timedelta
-
-import sys, os, re, time
-sys.path.append(os.path.dirname(__file__) + '/../conf/')
-import hosts, workloads, databases
-from pdb import set_trace
+from conf import hosts, workloads, databases
 
 totalclients = len(env.roledefs['client'])
 # clientno = 0 # obsolete
@@ -111,40 +109,40 @@ def status(db):
             print tail
             print  # skip the line for convenience
 
-@parallel
+#@parallel  #doesn't work :(
 @roles('client')
-@with_settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True)
 def get(db, regex='.*', do=False):
     """ Show *.err and *.out logs satisfying the regex to be transferred """
-    p = re.compile(regex)
-    database = _getdb(db)
-    cn = _client_no() + 1
-    with cd(database['home']):
-        ls = run('ls --format=single-column --sort=t *.err *.out').split("\r\n")
-        file_name = [f for f in ls if p.search(f)][0] # the most recent file satisfying pattern
-        f0 = os.path.splitext(file_name)[0]           # strip off extension
-    # now we have the map {'host' -> 'xxx'}
-    # perform self-check and maybe continue
-    print blue('Filename at c%s: ' % cn, bold = True), green(f0, bold = True)
-    # now do the processing, if enabled
-    if do:
+    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+        p = re.compile(regex)
+        database = _getdb(db)
+        cn = _client_no() + 1
         with cd(database['home']):
-            fbz2err = '%s-c%s-err.bz2' % (f0, cn)
-            fbz2out = '%s-c%s-out.bz2' % (f0, cn)
-            # packing
-            print blue('c%s packing ...' % cn)
-            run('tar -jcvf %s %s.err' % (fbz2err, f0))
-            run('tar -jcvf %s %s.out' % (fbz2out, f0))
-            # donwload them
-            print blue('c%s transferring ...' % cn)
-            remote_cmd_err = 'root@%s:%s/%s' % (env.host, database['home'], fbz2err)
-            local('scp %s .' % remote_cmd_err)
-            remote_cmd_out = 'root@%s:%s/%s' % (env.host, database['home'], fbz2out)
-            local('scp %s .' % remote_cmd_out)
-            # unpacking to custom name
-            print blue('c%s unpacking ...' % cn)
-            #local('tar -xvf %s %s-%s.err' % (fbz2err, f0, cn))
-            #local('tar -xvf %s %s-%s.out' % (fbz2err, f0, cn))
+            ls = run('ls --format=single-column --sort=t *.err *.out').split("\r\n")
+            file_name = [f for f in ls if p.search(f)][0] # the most recent file satisfying pattern
+            f0 = os.path.splitext(file_name)[0]           # strip off extension
+        # now we have the map {'host' -> 'xxx'}
+        # perform self-check and maybe continue
+        print blue('Filename at c%s: ' % cn, bold = True), green(f0, bold = True)
+        # now do the processing, if enabled
+        if do:
+            with cd(database['home']):
+                fbz2err = '%s-c%s-err.bz2' % (f0, cn)
+                fbz2out = '%s-c%s-out.bz2' % (f0, cn)
+                # packing
+                print blue('c%s packing ...' % cn)
+                run('tar -jcvf %s %s.err' % (fbz2err, f0))
+                run('tar -jcvf %s %s.out' % (fbz2out, f0))
+                # donwload them
+                print blue('c%s transferring ...' % cn)
+                remote_cmd_err = 'root@%s:%s/%s' % (env.host, database['home'], fbz2err)
+                local('scp %s .' % remote_cmd_err)
+                remote_cmd_out = 'root@%s:%s/%s' % (env.host, database['home'], fbz2out)
+                local('scp %s .' % remote_cmd_out)
+                # unpacking to custom name
+                print blue('c%s unpacking ...' % cn)
+                #local('tar -xvf %s %s-%s.err' % (fbz2err, f0, cn))
+                #local('tar -xvf %s %s-%s.out' % (fbz2err, f0, cn))
     
 
 @roles('client')
