@@ -129,6 +129,73 @@ class StatusThread extends Thread
 	}
 }
 
+/**
+ * A thread to periodically show the status of the experiment, to reassure you that progress is being made.
+ *
+ * @author cooperb
+ *
+ */
+class ExportMeasurementsThread extends Thread
+{
+    private Vector<Thread> _threads;
+    private MeasurementsExporter exporter;
+
+    /**
+     * The interval for reporting status.
+     */
+    public static final long sleeptime = 1000;
+
+    public ExportMeasurementsThread(Vector<Thread> threads, MeasurementsExporter exporter) throws FileNotFoundException {
+        _threads=threads;
+        this.exporter = exporter;
+    }
+
+    /**
+     * Run and periodically report export measurements to file.
+     */
+    public void run()
+    {
+        boolean alldone;
+
+        do
+        {
+            try
+            {
+                sleep(sleeptime);
+            }
+            catch (InterruptedException e)
+            {
+                //do nothing
+            }
+
+            alldone=true;
+
+            //terminate this thread when all the worker threads are done
+            for (Thread t : _threads) {
+                if (t.getState() != Thread.State.TERMINATED) {
+                    alldone = false;
+                }
+            }
+
+            try {
+                Measurements.getMeasurements().exportMeasurementsPart(exporter);
+            } catch (IOException e) {
+                e.printStackTrace();
+                e.printStackTrace(System.out);
+            }
+        }
+        while (!alldone);
+        try {
+            Measurements.getMeasurements().exportMeasurementsFinal(exporter);
+            exporter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            e.printStackTrace(System.out);
+        }
+    }
+}
+
+
 interface OperationHandler {
     boolean doOperation(DB _db, Object _workloadstate);
 }
@@ -362,41 +429,45 @@ public class Client
 		return true;
 	}
 
+    public static MeasurementsExporter getExporter(Properties props) throws FileNotFoundException {
+        MeasurementsExporter exporter = null;
+        // if no destination file is provided the results will be written to stdout
+        OutputStream out;
+        String exportFile = props.getProperty("exportfile");
+        if (exportFile == null)
+        {
+            out = System.out;
+        } else
+        {
+            out = new FileOutputStream(exportFile);
+        }
+
+        String exporterStr = props.getProperty("exporter", "com.yahoo.ycsb.measurements.exporter.TextMeasurementsExporter");
+
+        // if no exporter is provided the default text one will be used
+        try
+        {
+            exporter = (MeasurementsExporter) Class.forName(exporterStr).getConstructor(OutputStream.class).newInstance(out);
+        } catch (Exception e)
+        {
+            System.err.println("Could not find exporter " + exporterStr + ", will use default text reporter.");
+            e.printStackTrace();
+            exporter = new TextMeasurementsExporter(out);
+        }
+        return exporter;
+    }
 
 	/**
 	 * Exports the measurements to either sysout or a file using the exporter
 	 * loaded from conf.
 	 * @throws IOException Either failed to write to output stream or failed to close it.
 	 */
-	private static void exportMeasurements(Properties props, int opcount, long runtime)
+	private static void exportMeasurements(MeasurementsExporter exporter, int opcount, long runtime)
 			throws IOException
 	{
-		MeasurementsExporter exporter = null;
 		try
 		{
-			// if no destination file is provided the results will be written to stdout
-			OutputStream out;
-			String exportFile = props.getProperty("exportfile");
-			if (exportFile == null)
-			{
-				out = System.out;
-			} else
-			{
-				out = new FileOutputStream(exportFile);
-			}
 
-			// if no exporter is provided the default text one will be used
-			String exporterStr = props.getProperty("exporter", "com.yahoo.ycsb.measurements.exporter.TextMeasurementsExporter");
-			try
-			{
-				exporter = (MeasurementsExporter) Class.forName(exporterStr).getConstructor(OutputStream.class).newInstance(out);
-			} catch (Exception e)
-			{
-				System.err.println("Could not find exporter " + exporterStr
-						+ ", will use default text reporter.");
-				e.printStackTrace();
-				exporter = new TextMeasurementsExporter(out);
-			}
 
 			exporter.write("OVERALL", "RunTime(ms)", runtime);
 			double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
@@ -413,8 +484,7 @@ public class Client
 	}
 
 	@SuppressWarnings("unchecked")
-	public static void main(String[] args)
-	{
+	public static void main(String[] args) throws FileNotFoundException {
 		String dbname;
 		Properties props=new Properties();
 		Properties fileprops=new Properties();
@@ -721,6 +791,11 @@ public class Client
 			statusthread.start();
 		}
 
+        MeasurementsExporter exporter = getExporter(props);
+
+        ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter);
+        exportmeasurementsthread.start();
+
 		long st=System.currentTimeMillis();
 
 		for (Thread t : threads)
@@ -760,7 +835,14 @@ public class Client
 			statusthread.interrupt();
 		}
 
-		try
+        try {
+            exportmeasurementsthread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            e.printStackTrace(System.out);
+        }
+
+        try
 		{
 			workload.cleanup();
 		}
@@ -771,15 +853,15 @@ public class Client
 			System.exit(0);
 		}
 
-		try
-		{
-			exportMeasurements(props, opsDone, en - st);
-		} catch (IOException e)
-		{
-			System.err.println("Could not export measurements, error: " + e.getMessage());
-			e.printStackTrace();
-			System.exit(-1);
-		}
+		//try
+		//{
+		//	exportMeasurements(exporter, opsDone, en - st);
+		//} catch (IOException e)
+		//{
+		//	System.err.println("Could not export measurements, error: " + e.getMessage());
+		//	e.printStackTrace();
+		//	System.exit(-1);
+		//}
 
 		System.exit(0);
 	}

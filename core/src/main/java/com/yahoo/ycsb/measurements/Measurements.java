@@ -150,6 +150,21 @@ public class Measurements
       measurement.exportMeasurements(exporter);
     }
   }
+
+    public void exportMeasurementsPart(MeasurementsExporter exporter) throws IOException
+    {
+        for (OneMeasurement measurement : data.values())
+        {
+            measurement.exportMeasurementsPart(exporter);
+        }
+    }
+
+    public void exportMeasurementsFinal(MeasurementsExporter exporter) throws IOException {
+        for (OneMeasurement measurement : data.values())
+        {
+            measurement.exportMeasurementsFinal(exporter);
+        }
+    }
 	
       /**
        * Return a one line summary of the measurements.
@@ -164,4 +179,5 @@ public class Measurements
 		
 		return ret;
 	}
+
 }

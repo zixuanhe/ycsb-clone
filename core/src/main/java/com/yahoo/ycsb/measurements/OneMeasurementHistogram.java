@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import com.yahoo.ycsb.measurements.exporter.MeasurementsExporter;
 
@@ -36,10 +38,10 @@ public class OneMeasurementHistogram extends OneMeasurement
 	public static final String BUCKETS="histogram.buckets";
 	public static final String BUCKETS_DEFAULT="1000";
 
-	int _buckets;
-	int[] histogram;
-	int histogramoverflow;
-	int operations;
+	AtomicInteger _buckets;
+	AtomicIntegerArray histogram;
+    AtomicInteger histogramoverflow;
+    AtomicInteger operations;
 	long totallatency;
 	
 	//keep a windowed version of these stats for printing status
@@ -53,10 +55,10 @@ public class OneMeasurementHistogram extends OneMeasurement
 	public OneMeasurementHistogram(String name, Properties props)
 	{
 		super(name);
-		_buckets=Integer.parseInt(props.getProperty(BUCKETS, BUCKETS_DEFAULT));
-		histogram=new int[_buckets];
-		histogramoverflow=0;
-		operations=0;
+		_buckets=new AtomicInteger(Integer.parseInt(props.getProperty(BUCKETS, BUCKETS_DEFAULT)));
+		histogram=new AtomicIntegerArray(_buckets.get());
+		histogramoverflow=new AtomicInteger(0);
+		operations=new AtomicInteger(0);
 		totallatency=0;
 		windowoperations=0;
 		windowtotallatency=0;
@@ -86,15 +88,15 @@ public class OneMeasurementHistogram extends OneMeasurement
 	 */
 	public synchronized void measure(int latency)
 	{
-		if (latency/1000>=_buckets)
+		if (latency/1000>=_buckets.get())
 		{
-			histogramoverflow++;
+			histogramoverflow.incrementAndGet();
 		}
 		else
 		{
-			histogram[latency/1000]++;
+			histogram.incrementAndGet(latency/1000);
 		}
-		operations++;
+		operations.incrementAndGet();
 		totallatency+=latency;
 		windowoperations++;
 		windowtotallatency+=latency;
@@ -114,22 +116,22 @@ public class OneMeasurementHistogram extends OneMeasurement
   @Override
   public void exportMeasurements(MeasurementsExporter exporter) throws IOException
   {
-    exporter.write(getName(), "Operations", operations);
-    exporter.write(getName(), "AverageLatency(us)", (((double)totallatency)/((double)operations)));
+    exporter.write(getName(), "Operations", operations.get());
+    exporter.write(getName(), "AverageLatency(us)", (((double)totallatency)/((double)operations.get())));
     exporter.write(getName(), "MinLatency(us)", min);
     exporter.write(getName(), "MaxLatency(us)", max);
     
     int opcounter=0;
     boolean done95th=false;
-    for (int i=0; i<_buckets; i++)
+    for (int i=0; i<_buckets.get(); i++)
     {
-      opcounter+=histogram[i];
-      if ( (!done95th) && (((double)opcounter)/((double)operations)>=0.95) )
+      opcounter+=histogram.get(i);
+      if ( (!done95th) && (((double)opcounter)/((double)operations.get())>=0.95) )
       {
         exporter.write(getName(), "95thPercentileLatency(ms)", i);
         done95th=true;
       }
-      if (((double)opcounter)/((double)operations)>=0.99)
+      if (((double)opcounter)/((double)operations.get())>=0.99)
       {
         exporter.write(getName(), "99thPercentileLatency(ms)", i);
         break;
@@ -142,14 +144,57 @@ public class OneMeasurementHistogram extends OneMeasurement
       exporter.write(getName(), "Return="+I, val[0]);
     }     
 
-    for (int i=0; i<_buckets; i++)
+    for (int i=0; i<_buckets.get(); i++)
     {
-      exporter.write(getName(), Integer.toString(i), histogram[i]);
+      exporter.write(getName(), Integer.toString(i), histogram.get(i));
     }
-    exporter.write(getName(), ">"+_buckets, histogramoverflow);
+    exporter.write(getName(), ">"+_buckets.get(), histogramoverflow.get());
   }
 
-	@Override
+    @Override
+    public void exportMeasurementsPart(MeasurementsExporter exporter) throws IOException {
+        for (int i = 0; i < _buckets.get(); i++) {
+            exporter.write(getName(), Integer.toString(i), histogram.get(i));
+        }
+        exporter.write(getName(), ">" + _buckets.get(), histogramoverflow.get());
+    }
+
+
+
+    @Override
+    public void exportMeasurementsFinal(MeasurementsExporter exporter) throws IOException {
+        exportMeasurementsPart(exporter);
+
+        exporter.write(getName(), "Operations", operations.get());
+        exporter.write(getName(), "AverageLatency(us)", (((double)totallatency)/((double)operations.get())));
+        exporter.write(getName(), "MinLatency(us)", min);
+        exporter.write(getName(), "MaxLatency(us)", max);
+
+        int opcounter=0;
+        boolean done95th=false;
+        for (int i=0; i<_buckets.get(); i++)
+        {
+            opcounter+=histogram.get(i);
+            if ( (!done95th) && (((double)opcounter)/((double)operations.get())>=0.95) )
+            {
+                exporter.write(getName(), "95thPercentileLatency(ms)", i);
+                done95th=true;
+            }
+            if (((double)opcounter)/((double)operations.get())>=0.99)
+            {
+                exporter.write(getName(), "99thPercentileLatency(ms)", i);
+                break;
+            }
+        }
+
+        for (Integer I : returncodes.keySet())
+        {
+            int[] val=returncodes.get(I);
+            exporter.write(getName(), "Return="+I, val[0]);
+        }
+    }
+
+    @Override
 	public String getSummary() {
 		if (windowoperations==0)
 		{

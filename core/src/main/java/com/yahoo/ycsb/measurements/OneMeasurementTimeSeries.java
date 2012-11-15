@@ -19,9 +19,9 @@ package com.yahoo.ycsb.measurements;
 
 import java.io.IOException;
 import java.text.DecimalFormat;
-import java.util.HashMap;
-import java.util.Properties;
-import java.util.Vector;
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import com.yahoo.ycsb.measurements.exporter.MeasurementsExporter;
 
@@ -69,6 +69,8 @@ public class OneMeasurementTimeSeries extends OneMeasurement
 	
 	int min=-1;
 	int max=-1;
+
+    int first = 0;
 
 	private HashMap<Integer, int[]> returncodes;
 	
@@ -151,8 +153,37 @@ public class OneMeasurementTimeSeries extends OneMeasurement
       exporter.write(getName(), Long.toString(unit.time), unit.average, unit.throughput);
     }
   }
-	
-	@Override
+
+    @Override
+    public void exportMeasurementsPart(MeasurementsExporter exporter) throws IOException {
+        int last = _measurements.size();
+        for(int i = first; i < last; i++) {
+            SeriesUnit unit = _measurements.get(i);
+            exporter.write(getName(), Long.toString(unit.time), unit.average, unit.throughput);
+            //System.out.println(getName() + " " + Long.toString(unit.time) + ", " + unit.average + ", " + unit.throughput);
+        }
+        first = last;
+    }
+
+    @Override
+    public void exportMeasurementsFinal(MeasurementsExporter exporter) throws IOException  {
+        checkEndOfUnit(true);
+        exportMeasurementsPart(exporter);
+        exporter.write(getName(), "Operations", operations);
+        exporter.write(getName(), "AverageLatency(us)", (((double)totallatency)/((double)operations)));
+        exporter.write(getName(), "MinLatency(us)", min);
+        exporter.write(getName(), "MaxLatency(us)", max);
+
+        //TODO: 95th and 99th percentile latency
+
+        for (Integer I : returncodes.keySet())
+        {
+            int[] val=returncodes.get(I);
+            exporter.write(getName(), "Return="+I, val[0]);
+        }
+    }
+
+    @Override
 	public void reportReturnCode(int code) {
 		Integer Icode=code;
 		if (!returncodes.containsKey(Icode))
