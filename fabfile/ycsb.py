@@ -1,4 +1,6 @@
+import fabric
 from fabric.api import *
+from fabric.colors import green, blue
 from fabric.contrib.console import confirm
 
 from datetime import datetime, timedelta
@@ -6,6 +8,7 @@ from datetime import datetime, timedelta
 import sys, os
 sys.path.append(os.path.dirname(__file__) + '/../conf/')
 import hosts, workloads, databases
+from pdb import set_trace
 
 totalclients = len(env.roledefs['client'])
 clientno = 0
@@ -23,10 +26,13 @@ def _getworkload(workload):
         raise Exception("unconfigured workload '%s'" % workload)
     return workloads.workloads[workload]
 
-def _outfilename(databasename, workloadname, extension):    #TODO add target to the file name
+def _outfilename(databasename, workloadname, extension, target=None):
     global timestamp
     timestampstr = timestamp.strftime('%Y-%m-%d_%H-%M')
-    return '%s_%s_%s.%s' % (timestampstr, databasename, workloadname, extension)
+    if target == None:
+        return '%s_%s_%s.%s' % (timestampstr, databasename, workloadname, extension)
+    else:
+        return '%s_%s_%s_%s.%s' % (timestampstr, databasename, workloadname, str(target), extension)
 
 def _at(cmd, time=timestamp):
     return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))
@@ -57,14 +63,16 @@ def _ycsbruncmd(database, workload, target=None):
         cmd += ' -p %s=%s' % (key, value)
     if target != None:
         cmd += ' -target %s' % str(target)
-    outfile = _outfilename(database['name'], workload['name'], 'out')
-    errfile = _outfilename(database['name'], workload['name'], 'err')
+    outfile = _outfilename(database['name'], workload['name'], 'out', target)
+    errfile = _outfilename(database['name'], workload['name'], 'err', target)
     cmd += ' > %s/%s' % (database['home'], outfile)
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
 
+
 @roles('client')
 def load(db):
+    """Starts loading of data to the database"""
     global clientno
     database = _getdb(db)
     with cd(database['home']):
@@ -73,6 +81,7 @@ def load(db):
 
 @roles('client')
 def workload(db, workload, target=None):
+    """Starts running of the workload"""
     global clientno
     database = _getdb(db)
     load = _getworkload(workload)
@@ -84,14 +93,28 @@ def workload(db, workload, target=None):
     clientno += 1
 
 @roles('client')
-def status():
-    with settings(hide('warnings'), warn_only=True):
-        run('tail -n 2 /var/spool/cron/atjobs/*')
-        run('ps -f -C java')
-        #TODO show tail of the .err output
+def status(db):
+    """Shows status of the currently running YCSBs"""
+    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+        print blue('Scheduled:', bold = True)
+        print run('tail -n 2 /var/spool/cron/atjobs/*')
+        print
+        print blue('Running:', bold = True)
+        print run('ps -f -C java')
+        print
+        database = _getdb(db)
+        with(cd(database['home'])):
+            # sort the output of ls by date, the first entry should be the *.err needed
+            ls = run('ls --format single-column --sort=t *.err').split("\r\n")
+            logfile = ls[0]
+            tail = run('tail %s' % logfile)
+            print blue('Log:', bold = True), green(logfile, bold = True)
+            print tail
+            print   # skip the line for convenience
 
 @roles('client')
 def kill():
+    """Kills YCSB processes"""
     with settings(warn_only=True):
         run('ps -f -C java')
         if confirm("Do you want to kill Java on the client?"):
