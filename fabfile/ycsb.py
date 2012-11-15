@@ -1,5 +1,6 @@
 import fabric
 from fabric.api import *
+from fabric.colors import green, blue
 from fabric.contrib.console import confirm
 
 from datetime import datetime, timedelta
@@ -95,10 +96,10 @@ def workload(db, workload, target=None):
 def status(db):
     """Shows status of the currently running YCSBs"""
     with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
-        print 'Scheduled:'
+        print blue('Scheduled:', bold = True)
         print run('tail -n 2 /var/spool/cron/atjobs/*')
         print
-        print 'Running:'
+        print blue('Running:', bold = True)
         print run('ps -f -C java')
         print
         database = _getdb(db)
@@ -107,7 +108,7 @@ def status(db):
             ls = run('ls --format single-column --sort=t *.err').split("\r\n")
             logfile = ls[0]
             tail = run('tail %s' % logfile)
-            print 'Log: %s' % logfile
+            print blue('Log:', bold = True), green(logfile, bold = True)
             print tail
             print   # skip the line for convenience
 
