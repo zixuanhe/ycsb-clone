@@ -41,6 +41,8 @@ public abstract class OneMeasurement {
 
     public abstract void reportReturnCode(int code);
 
+    public abstract void reportRetryCount(int retryCount);
+
     public abstract void measure(int latency);
 
     public abstract String getSummary();
@@ -56,4 +58,5 @@ public abstract class OneMeasurement {
     public abstract void exportMeasurementsPart(MeasurementsExporter exporter) throws IOException;
 
     public abstract void exportMeasurementsFinal(MeasurementsExporter exporter) throws IOException;
+
 }

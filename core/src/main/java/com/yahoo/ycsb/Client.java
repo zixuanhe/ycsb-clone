@@ -201,10 +201,7 @@ interface OperationHandler {
 }
 
 /**
- * A thread for executing transactions or data inserts to the database.
- *
- * @author cooperb
- *
+ * A thread for exporting statistics to the file in runtime.
  */
 class ClientThread extends Thread
 {
