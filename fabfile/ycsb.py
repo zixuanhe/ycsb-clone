@@ -109,9 +109,8 @@ def status(db):
             print tail
             print  # skip the line for convenience
 
-#@parallel  #doesn't work :(
 @roles('client')
-def get(db, regex='.*', do=False):
+def getlog(db, regex='.*', do=False):
     """ Show *.err and *.out logs satisfying the regex to be transferred """
     with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
         p = re.compile(regex)
@@ -135,15 +134,26 @@ def get(db, regex='.*', do=False):
                 run('tar -jcvf %s %s.out' % (fbz2out, f0))
                 # donwload them
                 print blue('c%s transferring ...' % cn)
-                remote_cmd_err = 'root@%s:%s/%s' % (env.host, database['home'], fbz2err)
-                local('scp %s .' % remote_cmd_err)
-                remote_cmd_out = 'root@%s:%s/%s' % (env.host, database['home'], fbz2out)
-                local('scp %s .' % remote_cmd_out)
+                fbz2err_full = '%s/%s' % (database['home'], fbz2err)
+                get(fbz2err_full, fbz2err)
+                fbz2out_full = '%s/%s' % (database['home'], fbz2out)
+                get(fbz2out_full, fbz2out)
+                # the files are here, remove remote bz2
+                run('rm -f %s' % fbz2err)
+                run('rm -f %s' % fbz2out)
                 # unpacking to custom name
                 print blue('c%s unpacking ...' % cn)
-                #local('tar -xvf %s %s-%s.err' % (fbz2err, f0, cn))
-                #local('tar -xvf %s %s-%s.out' % (fbz2err, f0, cn))
-    
+                local('tar -xvf %s' % fbz2err)
+                local('tar -xvf %s' % fbz2out)
+                # unpacked ok, remove remote bz2
+                local('rm -f %s' % fbz2err)
+                local('rm -f %s' % fbz2out)
+                # print blue('c%s renaming to short names ...' % cn)
+                # local('mv %s.err c%s.err' % (f0, cn))
+                # local('mv %s.out c%s.out' % (f0, cn))
+                print blue('c%s renaming ...' % cn)
+                local('mv %s.err %s-c%s.err' % (f0, f0, cn))
+                local('mv %s.out %s-c%s.out' % (f0, f0, cn))
 
 @roles('client')
 def kill():
@@ -152,3 +162,13 @@ def kill():
         run('ps -f -C java')
         if confirm("Do you want to kill Java on the client?"):
             run('killall java')
+
+@roles('client')
+@parallel
+def test(db):     
+    """ test parallel of fabric 1.3.2"""
+    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+        run('cd /tmp')
+        ls = run('ls -al')
+        print ls
+
