@@ -23,12 +23,12 @@ The property files used with the core workload generator can specify values for 
 <LI><b>maxscanlength</b>: for scans, what is the maximum number of records to scan (default: 1000) 
 <LI><b>scanlengthdistribution</b>: for scans, what distribution should be used to choose the number of records to scan, for each scan, between 1 and maxscanlength (default: uniform) 
 <LI><b>insertorder</b>: should records be inserted in order by key ("ordered"), or in hashed order ("hashed") (default: hashed)
-<LI><b>readretrycount</b>: number of retries if read fails
-<LI><b>updateretrycount</b>: number of retries if update fails
-<LI><b>insertretrycount</b>: number of retries if insert fails
-<LI><b>warmupoperationcount</b>: number of operations in warmup phase
-<LI><b>warmupexecutiontime</b>: execution time of warmup phase in milliseconds
-<LI><b>exportmeasurementsinterval</b>: interval time for exporting measurements in out stream in milliseconds
+<LI><b>readretrycount</b>: number of retries if read fails, if zero then don't retry (default: 0)
+<LI><b>updateretrycount</b>: number of retries if update fails, if zero then don't retry (default: 0)
+<LI><b>insertretrycount</b>: number of retries if insert fails, if zero then don't retry (default: 0)
+<LI><b>warmupoperationcount</b>: number of operations in warmup phase, if zero then don't warmup(default: 0)
+<LI><b>warmupexecutiontime</b>: execution time of warmup phase in milliseconds, if zero then don't warmup (default: 0)
+<LI><b>exportmeasurementsinterval</b>: interval time for exporting measurements in out stream in milliseconds (default: 1000)
 </UL>
 <HR>
 YCSB - Yahoo! Research - Contact cooperb@yahoo-inc.com.
