@@ -1,10 +1,11 @@
 root = '/opt/ycsb'
 
 data = {
-    'recordcount': 2000000000,
+    'recordcount': 500000000,
     'fieldcount': 10,
     'fieldlength': 10,
-    'operationscount': 10000000,
+    'fieldnameprefix': 'f',
+    'operationcount': 10000000,
     'threadcount': 16,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload'
 }
