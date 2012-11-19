@@ -4,3 +4,4 @@ from ycsb import workload as ycsb_run
 from ycsb import status as ycsb_status
 from ycsb import kill as ycsb_kill
 from ycsb import get as ycsb_get
+from ycsb import deploy as ycsb_deploy

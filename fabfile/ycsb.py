@@ -158,3 +158,18 @@ def kill():
         run('ps -f -C java')
         if confirm("Do you want to kill Java on the client?"):
             run('killall java')
+
+@runs_once
+def _build_and_upload():
+    local('mvn clean package')
+    put('distribution/target/ycsb-0.1.4.tar.gz', '~/ycsb.tar.gz')
+
+@roles('client')
+def deploy():
+    """Builds and deploys YCSB to the clients"""
+    _build_and_upload()
+    client1 = env.roledefs['client'][0]
+    run('scp %s:ycsb.tar.gz .' % client1)
+    with cd('/opt'):
+        run('rm -r ycsb-0.1.4')
+        run('tar xzvf ~/ycsb.tar.gz')
