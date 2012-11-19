@@ -136,8 +136,6 @@ class ExportMeasurementsThread extends Thread {
     public void run() {
         boolean alldone;
 
-        long start = System.currentTimeMillis();
-
         do {
             try {
                 sleep(sleeptime);
@@ -162,12 +160,16 @@ class ExportMeasurementsThread extends Thread {
             }
         }
         while (!alldone);
-        long runtime = System.currentTimeMillis() - start;
         try {
             Measurements.getMeasurements().exportMeasurementsFinal(exporter);
             long opcount = 0;
+            long runtime = 0;
             for(Thread t : _threads) {
-                opcount += ((ClientThread)t).getOpsDone();
+                ClientThread ct = (ClientThread) t;
+                opcount += ct.getOpsDone();
+                if(runtime < ct.getRuntime()) {
+                    runtime = ct.getRuntime();
+                }
             }
             exporter.write("OVERALL", "RunTime(ms)", runtime);
             double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
@@ -253,6 +255,8 @@ class ClientThread extends Thread {
     Object _workloadstate;
     Properties _props;
 
+    long runtime;
+
     private static final double CHECK_THROUGHPUT_INTERVAL = 100; // in milliseconds
 
 
@@ -278,6 +282,10 @@ class ClientThread extends Thread {
 
     public int getOpsDone() {
         return _opsdone;
+    }
+
+    public long getRuntime() {
+        return runtime;
     }
 
     public void run() {
@@ -308,6 +316,8 @@ class ClientThread extends Thread {
             // do nothing.
         }
 
+        long st = System.currentTimeMillis();
+
         try {
             if (_dotransactions) {
                 run(new OperationHandler() {
@@ -329,6 +339,8 @@ class ClientThread extends Thread {
             e.printStackTrace();
             e.printStackTrace(System.out);
         }
+
+        runtime = System.currentTimeMillis() - st;
 
         try {
             _db.cleanup();
@@ -773,6 +785,7 @@ public class Client {
             terminator.start();
         }
 
+        long st = System.currentTimeMillis();
         int opsDone = 0;
 
         for (Thread t : threads) {

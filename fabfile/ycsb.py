@@ -1,9 +1,9 @@
-import re, time, os
+import re, time, os, tempfile
 from datetime import datetime, timedelta
 from pdb import set_trace
 
 from fabric.api import *
-from fabric.colors import green, blue
+from fabric.colors import green, blue, red
 from fabric.contrib.console import confirm
 
 from conf import hosts, workloads, databases
@@ -73,7 +73,9 @@ def _ycsbruncmd(database, workload, target=None):
     return cmd
 
 def _client_no():
-    return env.all_hosts.index(env.host)
+    # env.all_hosts is empty for @parallel in fabric 1.3.2
+    # return env.all_hosts.index(env.host)
+    return env.roledefs['client'].index(env.host)
 
 @roles('client')
 def load(db):
@@ -116,6 +118,7 @@ def status(db):
             print  # skip the line for convenience
 
 @roles('client')
+@parallel
 def getlog(db, regex='.*', do=False):
     """ Show *.err and *.out logs satisfying the regex to be transferred """
     with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
@@ -132,34 +135,36 @@ def getlog(db, regex='.*', do=False):
         # now do the processing, if enabled
         if do:
             with cd(database['home']):
-                fbz2err = '%s-c%s-err.bz2' % (f0, cn)
-                fbz2out = '%s-c%s-out.bz2' % (f0, cn)
+                tempdir_local = '%s/c%s' % (tempfile.gettempdir(), cn)
+                bz2err_remote = '%s-c%s-err.bz2' % (f0, cn)
+                bz2out_remote = '%s-c%s-out.bz2' % (f0, cn)
+                bz2err_full_local = '%s/%s-err.bz2' % (tempdir_local, f0)
+                bz2out_full_local = '%s/%s-out.bz2' % (tempdir_local, f0)
                 # packing
                 print blue('c%s packing ...' % cn)
-                run('tar -jcvf %s %s.err' % (fbz2err, f0))
-                run('tar -jcvf %s %s.out' % (fbz2out, f0))
+                run('tar -jcvf %s %s.err' % (bz2err_remote, f0))
+                run('tar -jcvf %s %s.out' % (bz2out_remote, f0))
                 # donwload them
-                print blue('c%s transferring ...' % cn)
-                fbz2err_full = '%s/%s' % (database['home'], fbz2err)
-                get(fbz2err_full, fbz2err)
-                fbz2out_full = '%s/%s' % (database['home'], fbz2out)
-                get(fbz2out_full, fbz2out)
+                print blue('c%s transferring to %s...' % (cn, tempdir_local))
+                get(bz2err_remote, bz2err_full_local)
+                get(bz2out_remote, bz2out_full_local)
                 # the files are here, remove remote bz2
-                run('rm -f %s' % fbz2err)
-                run('rm -f %s' % fbz2out)
+                run('rm -f %s' % bz2err_remote)
+                run('rm -f %s' % bz2out_remote)
                 # unpacking to custom name
                 print blue('c%s unpacking ...' % cn)
-                local('tar -xvf %s' % fbz2err)
-                local('tar -xvf %s' % fbz2out)
-                # unpacked ok, remove remote bz2
-                local('rm -f %s' % fbz2err)
-                local('rm -f %s' % fbz2out)
+                local('tar -xvf %s -C %s' % (bz2err_full_local, tempdir_local))
+                local('tar -xvf %s -C %s' % (bz2out_full_local, tempdir_local))
+                # unpacked ok, remove local bz2
+                #local('rm -f %s' % bz2err_full_local)
+                #local('rm -f %s' % bz2out_full_local)
                 # print blue('c%s renaming to short names ...' % cn)
                 # local('mv %s.err c%s.err' % (f0, cn))
                 # local('mv %s.out c%s.out' % (f0, cn))
-                print blue('c%s renaming ...' % cn)
-                local('mv %s.err %s-c%s.err' % (f0, f0, cn))
-                local('mv %s.out %s-c%s.out' % (f0, f0, cn))
+                print blue('c%s moving to current dir ...' % cn)
+                local('mv %s/%s.err ./%s-c%s.err' % (tempdir_local, f0, f0, cn))
+                local('mv %s/%s.out ./%s-c%s.out' % (tempdir_local, f0, f0, cn))
+                local('rm -rf %s' % tempdir_local)
 
 @roles('client')
 def kill():
@@ -184,11 +189,3 @@ def deploy():
         run('rm -r ycsb-0.1.4')
         run('tar xzvf ~/ycsb.tar.gz')
 
-@roles('client')
-@parallel
-def test(db):
-    """ test parallel of fabric 1.3.2"""
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
-        run('cd /tmp')
-        ls = run('ls -al')
-        print ls
