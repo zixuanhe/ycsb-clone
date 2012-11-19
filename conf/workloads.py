@@ -7,7 +7,8 @@ data = {
     'fieldnameprefix': 'f',
     'operationcount': 10000000,
     'threadcount': 16,
-    'workload': 'com.yahoo.ycsb.workloads.CoreWorkload'
+    'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
+    'exportmeasurementsinterval': 30000,
 }
 
 workloads = {
