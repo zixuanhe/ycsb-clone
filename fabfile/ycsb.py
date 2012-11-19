@@ -188,4 +188,12 @@ def deploy():
     with cd('/opt'):
         run('rm -r ycsb-0.1.4')
         run('tar xzvf ~/ycsb.tar.gz')
+        
+        
+def merge(out='stats.txt'):
+    # grab all *.out, extract statistics from there
+    with settings(hide('running', 'warnings'), warn_only=True):
+        ls = local('ls --format=single-column --sort=t *.out', capture=True).split("\r\n")
+        for f in ls:
+            print red(f)
 
