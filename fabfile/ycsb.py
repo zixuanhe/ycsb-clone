@@ -39,7 +39,10 @@ def _ycsbloadcmd(database, clientno):
     for (key, value) in database['properties'].items():
         cmd += ' -p %s=%s' % (key, value)
     for (key, value) in workloads.data.items():
-        cmd += ' -p %s=%s' % (key, value)
+        if key == 'operationcount':
+            cmd += ' -p %s=%s' % (key, value / totalclients)
+        else:
+            cmd += ' -p %s=%s' % (key, value)
     insertcount = workloads.data['recordcount'] / totalclients
     insertstart = insertcount * clientno
     cmd += ' -p insertstart=%s' % insertstart
@@ -57,7 +60,10 @@ def _ycsbruncmd(database, workload, target=None):
     for (key, value) in database['properties'].items():
         cmd += ' -p %s=%s' % (key, value)
     for (key, value) in workloads.data.items():
-        cmd += ' -p %s=%s' % (key, value)
+        if key == 'operationcount':
+            cmd += ' -p %s=%s' % (key, int(value) / totalclients)
+        else:
+            cmd += ' -p %s=%s' % (key, value)
     if target != None:
         cmd += ' -target %s' % str(target)
     outfile = _outfilename(database['name'], workload['name'], 'out', target)

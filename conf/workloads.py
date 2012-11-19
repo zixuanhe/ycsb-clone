@@ -5,7 +5,7 @@ data = {
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
-    'operationscount': 10000000,
+    'operationcount': 10000000,
     'threadcount': 16,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload'
 }
