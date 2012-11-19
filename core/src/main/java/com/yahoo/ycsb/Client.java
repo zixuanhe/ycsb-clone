@@ -113,22 +113,21 @@ class StatusThread extends Thread {
 }
 
 /**
- * A thread to periodically show the status of the experiment, to reassure you that progress is being made.
- *
- * @author cooperb
+ * A thread to periodically export measurements by exporter.
  */
 class ExportMeasurementsThread extends Thread {
     private Vector<Thread> _threads;
     private MeasurementsExporter exporter;
 
     /**
-     * The interval for reporting status.
+     * The interval for exporting measurements.
      */
-    public static final long sleeptime = 1000;
+    private long sleeptime;
 
-    public ExportMeasurementsThread(Vector<Thread> threads, MeasurementsExporter exporter) throws FileNotFoundException {
+    public ExportMeasurementsThread(Vector<Thread> threads, MeasurementsExporter exporter, long exportmeasurementsinterval) throws FileNotFoundException {
         _threads = threads;
         this.exporter = exporter;
+        this.sleeptime = exportmeasurementsinterval;
     }
 
     /**
@@ -136,6 +135,8 @@ class ExportMeasurementsThread extends Thread {
      */
     public void run() {
         boolean alldone;
+
+        long start = System.currentTimeMillis();
 
         do {
             try {
@@ -161,8 +162,16 @@ class ExportMeasurementsThread extends Thread {
             }
         }
         while (!alldone);
+        long runtime = System.currentTimeMillis() - start;
         try {
             Measurements.getMeasurements().exportMeasurementsFinal(exporter);
+            long opcount = 0;
+            for(Thread t : _threads) {
+                opcount += ((ClientThread)t).getOpsDone();
+            }
+            exporter.write("OVERALL", "RunTime(ms)", runtime);
+            double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
+            exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
             exporter.close();
         } catch (IOException e) {
             e.printStackTrace();
@@ -176,6 +185,60 @@ interface OperationHandler {
     boolean doOperation(DB _db, Object _workloadstate);
 }
 
+class WarmupThread extends ClientThread {
+
+    long exectime;
+    long curexec = 0;
+
+    /**
+     * Constructor.
+     *
+     * @param db                   the DB implementation to use
+     * @param dotransactions       true to do transactions, false to insert data
+     * @param workload             the workload to use
+     * @param props                the properties defining the experiment
+     * @param opcount              the number of operations (transactions or inserts) to do
+     * @param targetperthreadperms target number of operations per thread per ms
+     * @param exectime             execution time of thread
+     */
+    public WarmupThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, long exectime) {
+        super(db, dotransactions, workload, props, opcount, targetperthreadperms);
+        this.exectime = exectime;
+    }
+
+    @Override
+    protected void run(OperationHandler handler) {
+        long startexec = System.currentTimeMillis();
+        while (isContinue()) {
+            if (!_workload.doRead(_db, _workloadstate)) {
+                break;
+            }
+            _opsdone++;
+            curexec = System.currentTimeMillis() - startexec;
+        }
+        System.out.println("Warmup execution time: " + curexec);
+        System.out.println("Warmup operations: " + _opsdone);
+    }
+
+    private boolean isContinue() {
+        if(exectime != 0) {
+            if(curexec < exectime) {
+                return true;
+            } else
+                return false;
+        }
+
+        if(_opcount != 0) {
+            if(_opsdone < _opcount) {
+                return true;
+            } else
+                return false;
+        }
+
+        return false;
+    }
+}
+
 /**
  * A thread for exporting statistics to the file in runtime.
  */
@@ -187,8 +250,6 @@ class ClientThread extends Thread {
     double _target;
 
     int _opsdone;
-    int _threadid;
-    int _threadcount;
     Object _workloadstate;
     Properties _props;
 
@@ -201,22 +262,17 @@ class ClientThread extends Thread {
      * @param db                   the DB implementation to use
      * @param dotransactions       true to do transactions, false to insert data
      * @param workload             the workload to use
-     * @param threadid             the id of this thread
-     * @param threadcount          the total number of threads
      * @param props                the properties defining the experiment
      * @param opcount              the number of operations (transactions or inserts) to do
      * @param targetperthreadperms target number of operations per thread per ms
      */
-    public ClientThread(DB db, boolean dotransactions, Workload workload, int threadid, int threadcount, Properties props, int opcount, double targetperthreadperms) {
-        //TODO: consider removing threadcount and threadid
+    public ClientThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms) {
         _db = db;
         _dotransactions = dotransactions;
         _workload = workload;
         _opcount = opcount;
         _opsdone = 0;
         _target = targetperthreadperms;
-        _threadid = threadid;
-        _threadcount = threadcount;
         _props = props;
     }
 
@@ -234,7 +290,7 @@ class ClientThread extends Thread {
         }
 
         try {
-            _workloadstate = _workload.initThread(_props, _threadid, _threadcount);
+            _workloadstate = _workload.initThread(_props);
         } catch (WorkloadException e) {
             e.printStackTrace();
             e.printStackTrace(System.out);
@@ -282,7 +338,7 @@ class ClientThread extends Thread {
         }
     }
 
-    private void run(OperationHandler handler) {
+    protected void run(OperationHandler handler) {
         long interval_time = System.currentTimeMillis();
         long interval_ops = 0;
         while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested()) {
@@ -324,9 +380,10 @@ class ClientThread extends Thread {
 public class Client {
 
     public static final String OPERATION_COUNT_PROPERTY = "operationcount";
-
+    public static final String WARMUP_OPERATION_COUNT_PROPERTY = "warmupoperationcount";
+    public static final String WARMUP_EXECUTION_TIME = "warmupexecutiontime";
+    public static final String EXPORT_MEASUREMENTS_INTERVAL = "exportmeasurementsinterval";
     public static final String RECORD_COUNT_PROPERTY = "recordcount";
-
     public static final String WORKLOAD_PROPERTY = "workload";
 
     /**
@@ -410,8 +467,6 @@ public class Client {
     private static void exportMeasurements(MeasurementsExporter exporter, int opcount, long runtime)
             throws IOException {
         try {
-
-
             exporter.write("OVERALL", "RunTime(ms)", runtime);
             double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
             exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
@@ -643,21 +698,49 @@ public class Client {
             }
         }
 
+        int warmupopcount = Integer.parseInt(props.getProperty(WARMUP_OPERATION_COUNT_PROPERTY, "0"));
+        int warmupexectime = Integer.parseInt(props.getProperty(WARMUP_EXECUTION_TIME, "0"));
+
+        if (dotransactions) {
+            Vector<Thread> warmupThreads = new Vector<Thread>();
+            for (int threadid = 0; threadid < threadcount; threadid++) {
+                DB db = null;
+                try {
+                    db = DBFactory.rawDB(dbname, props);
+                } catch (UnknownDBException e) {
+                    System.out.println("Unknown DB " + dbname);
+                    System.exit(0);
+                }
+                Thread t = new WarmupThread(db, dotransactions, workload, props,
+                        warmupopcount / threadcount, targetperthreadperms, warmupexectime);
+                warmupThreads.add(t);
+            }
+
+            for (Thread t : warmupThreads) {
+                t.start();
+            }
+
+            for (Thread t : warmupThreads) {
+                try {
+                    t.join();
+                } catch (InterruptedException e) {
+
+                }
+            }
+        }
+
         Vector<Thread> threads = new Vector<Thread>();
 
         for (int threadid = 0; threadid < threadcount; threadid++) {
             DB db = null;
             try {
-                db = DBFactory.newDB(dbname, props);
+                db = DBFactory.wrappedDB(dbname, props);
             } catch (UnknownDBException e) {
                 System.out.println("Unknown DB " + dbname);
                 System.exit(0);
             }
-
-            Thread t = new ClientThread(db, dotransactions, workload, threadid, threadcount, props, opcount / threadcount, targetperthreadperms);
-
+            Thread t = new ClientThread(db, dotransactions, workload, props, opcount / threadcount, targetperthreadperms);
             threads.add(t);
-            //t.start();
         }
 
         StatusThread statusthread = null;
@@ -673,7 +756,9 @@ public class Client {
 
         MeasurementsExporter exporter = getExporter(props);
 
-        ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter);
+        long exportmeasurementsinterval = Long.parseLong(props.getProperty(EXPORT_MEASUREMENTS_INTERVAL, "1000"));
+
+        ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter, exportmeasurementsinterval);
         exportmeasurementsthread.start();
 
 
