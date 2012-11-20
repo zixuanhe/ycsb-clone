@@ -261,7 +261,7 @@ def merge(out='stats.txt'):
             for mt, cstats in sorted(ostats.items()):
                 row.append(fold_functions[mt](cstats.values()))
         tsv_writer.writerow(row)
-
+        print green('Report written to %s' % out)
 
 def _avg(seq):
     return sum(seq) / float(len(seq))
