@@ -164,13 +164,16 @@ class ExportMeasurementsThread extends Thread {
             Measurements.getMeasurements().exportMeasurementsFinal(exporter);
             long opcount = 0;
             long runtime = 0;
+            long recon = 0;
             for(Thread t : _threads) {
                 ClientThread ct = (ClientThread) t;
                 opcount += ct.getOpsDone();
                 if(runtime < ct.getRuntime()) {
                     runtime = ct.getRuntime();
                 }
+                recon += ct.getReconnections();
             }
+            exporter.write("OVERALL", "Reconnections", recon);
             exporter.write("OVERALL", "RunTime(ms)", runtime);
             double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
             exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
@@ -190,7 +193,7 @@ interface OperationHandler {
 class WarmupThread extends ClientThread {
 
     long exectime;
-    long curexec = 0;
+    long curexec;
 
     /**
      * Constructor.
@@ -206,6 +209,7 @@ class WarmupThread extends ClientThread {
     public WarmupThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, long exectime) {
         super(db, dotransactions, workload, props, opcount, targetperthreadperms);
         this.exectime = exectime;
+        this.curexec = 0;
     }
 
     @Override
@@ -250,14 +254,18 @@ class ClientThread extends Thread {
     Workload _workload;
     int _opcount;
     double _target;
+    double reconnectiontarget;
 
     int _opsdone;
     Object _workloadstate;
     Properties _props;
 
+    long reconnectioncounter;
     long runtime;
 
     private static final double CHECK_THROUGHPUT_INTERVAL = 100; // in milliseconds
+    //start checking throughput for reconnecting after this time
+    private static final double CHECK_RECONNECTION_TARGET_TIME = 1000; // in milliseconds
 
 
     /**
@@ -278,6 +286,12 @@ class ClientThread extends Thread {
         _opsdone = 0;
         _target = targetperthreadperms;
         _props = props;
+        reconnectioncounter = 0;
+    }
+
+    public ClientThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, double reconnectiontarget) {
+        this(db, dotransactions, workload, props, opcount, targetperthreadperms);
+        this.reconnectiontarget = reconnectiontarget;
     }
 
     public int getOpsDone() {
@@ -286,6 +300,10 @@ class ClientThread extends Thread {
 
     public long getRuntime() {
         return runtime;
+    }
+
+    public long getReconnections() {
+        return reconnectioncounter;
     }
 
     public void run() {
@@ -316,8 +334,6 @@ class ClientThread extends Thread {
             // do nothing.
         }
 
-        long st = System.currentTimeMillis();
-
         try {
             if (_dotransactions) {
                 run(new OperationHandler() {
@@ -340,8 +356,6 @@ class ClientThread extends Thread {
             e.printStackTrace(System.out);
         }
 
-        runtime = System.currentTimeMillis() - st;
-
         try {
             _db.cleanup();
         } catch (DBException e) {
@@ -351,11 +365,25 @@ class ClientThread extends Thread {
     }
 
     protected void run(OperationHandler handler) {
-        long interval_time = System.currentTimeMillis();
+        long start_time = System.currentTimeMillis();
+        long interval_time = start_time;
         long interval_ops = 0;
         while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested()) {
             long current_time = System.currentTimeMillis();
             if (current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
+                //reconnect to the database if low throughput
+                if(reconnectiontarget > 0 && (current_time - start_time) > CHECK_RECONNECTION_TARGET_TIME) {
+                    if(reconnectiontarget > interval_ops / ((double)current_time - interval_time)) {
+                        try {
+                            System.err.println("Reconnecting to the DB...");
+                            _db.reinit();
+                            reconnectioncounter++;
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            e.printStackTrace(System.out);
+                        }
+                    }
+                }
                 interval_time = current_time;
                 interval_ops = 0;
             }
@@ -373,7 +401,8 @@ class ClientThread extends Thread {
                 //like sleeping for (1/target throughput)-operation latency,
                 //because it smooths timing inaccuracies (from sleep() taking an int,
                 //current time in millis) over many operations
-                while (System.currentTimeMillis() - interval_time < (interval_ops / _target)) {
+                //while (System.currentTimeMillis() - interval_time < (interval_ops / _target)) {
+                while (_target < interval_ops / ((double)System.currentTimeMillis() - interval_time)) {
                     try {
                         sleep(1);
                     } catch (InterruptedException e) {
@@ -382,6 +411,7 @@ class ClientThread extends Thread {
                 }
             }
         }
+        runtime = System.currentTimeMillis() - start_time;
     }
 }
 
@@ -643,6 +673,8 @@ public class Client {
             targetperthreadperms = targetperthread / 1000.0;
         }
 
+        double reconnectiontarget = Double.parseDouble(props.getProperty("reconnectiontarget", "0")) / 1000.0;
+
         System.out.println("YCSB Client 0.1");
         System.out.print("Command line:");
         for (int i = 0; i < args.length; i++) {
@@ -751,7 +783,7 @@ public class Client {
                 System.out.println("Unknown DB " + dbname);
                 System.exit(0);
             }
-            Thread t = new ClientThread(db, dotransactions, workload, props, opcount / threadcount, targetperthreadperms);
+            Thread t = new ClientThread(db, dotransactions, workload, props, opcount / threadcount, targetperthreadperms, reconnectiontarget);
             threads.add(t);
         }
 

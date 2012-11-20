@@ -71,6 +71,14 @@ public class DBWrapper extends DB {
         _db.init();
     }
 
+    public void reinit() throws DBException, InstantiationException, IllegalAccessException {
+        Properties p = _db.getProperties();
+        _db.cleanup();
+        _db = _db.getClass().newInstance();
+        _db.setProperties(p);
+        _db.init();
+    }
+
     /**
      * Cleanup any state for this DB.
      * Called once per DB instance; there is one DB instance per client thread.

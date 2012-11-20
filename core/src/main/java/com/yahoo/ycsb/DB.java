@@ -81,6 +81,12 @@ public abstract class DB
 	{
 	}
 
+    /**
+     * Reinitialize this DB.
+     */
+    public void reinit() throws DBException, InstantiationException, IllegalAccessException {
+    }
+
 	/**
 	 * Read a record from the database. Each field/value pair from the result will be stored in a HashMap.
 	 *
