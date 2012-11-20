@@ -1,3 +1,5 @@
+from collections import defaultdict
+import csv
 import re, time, os, tempfile
 from datetime import datetime, timedelta
 from pdb import set_trace
@@ -151,7 +153,7 @@ def getlog(db, regex='.*', do=False):
                 # the files are here, remove remote bz2
                 run('rm -f %s' % bz2err_remote)
                 run('rm -f %s' % bz2out_remote)
-                # unpacking to custom name
+                # unpacking to temp dir
                 print blue('c%s unpacking ...' % cn)
                 local('tar -xvf %s -C %s' % (bz2err_full_local, tempdir_local))
                 local('tar -xvf %s -C %s' % (bz2out_full_local, tempdir_local))
@@ -171,8 +173,14 @@ def kill():
     """Kills YCSB processes"""
     with settings(warn_only=True):
         run('ps -f -C java')
-        if confirm("Do you want to kill Java on the client?"):
+        if confirm(red("Do you want to kill Java on the client?")):
             run('killall java')
+
+@roles('client')
+def clean_logs():
+    """Removed all logs from /dev/shm"""
+    if confirm(red("Do you want to clear all logs from RAM?")):
+        run('rm -r /dev/shm/*')
 
 @runs_once
 def _build_and_upload():
@@ -188,4 +196,72 @@ def deploy():
     with cd('/opt'):
         run('rm -r ycsb-0.1.4')
         run('tar xzvf ~/ycsb.tar.gz')
+        
+        
+def merge(out='stats.txt'):
+    """grab all *.out, extract statistics from there and merge into TSV file """
+    fold_functions = {
+        'Operations'     : sum,
+        'RunTime'        : sum,
+        'Throughput'     : _avg,
+        'AverageLatency' : _avg,
+        'MinLatency'     : min,
+        'MaxLatency'     : max,
+        '95thPercentileLatency' : max,
+        '99thPercentileLatency' : max,
+        'Return'         : sum
+    }
+    metrics = fold_functions.keys()
+    with settings(hide('running', 'warnings'), warn_only=True):
+        stats = dict()
+        items = local('ls --format=single-column *.out', capture=True).split("\n")
+        pcn = re.compile(r'.*?-c(\d)\.out')
+        pln = re.compile(r'\[(\w+)\], (.*?), (\d+)')
+        # gather stats from all files=items
+        for item in items:
+            with open(item) as file:
+                m0 = pcn.search(item)
+                if m0:
+                    cn = m0.group(1)
+                    for line in file:
+                        for mt in metrics:
+                            if mt in line:
+                                m1 = pln.search(line)
+                                if m1:
+                                    oc = m1.group(1) # operation code
+                                    if not(oc in stats):
+                                        stats[oc] = {}
+                                    if not(mt in stats[oc]):
+                                        stats[oc][mt] = {}
+                                    # not it is safe to access
+                                    stats[oc][mt][cn] = float(m1.group(3))
+    # stats is the dictionary like this:
+    #OVERALL RunTime {'1': 1500.0, '3': 2295.0, '2': 1558.0, '4': 2279.0}
+    # ...
+    #UPDATE Return=1 {'1': 477.0, '3': 488.0, '2': 514.0, '4': 522.0}
+    with open(out, 'w') as file:
+        tsv_writer = csv.writer(file, delimiter='\t')
+        headers = []
+        for oc, ostats in sorted(stats.items()):
+            for mt in sorted(ostats.keys()):
+                 headers.append(oc + '-' + mt)
+        tsv_writer.writerow(headers)
+        # write the values for each client
+        for cn in range(1,4):
+            row = [str(cn)]
+            for oc, ostats in sorted(stats.items()):
+                    # oc is the operation code oc = 'OVERALL'
+                    for mt, cstats in sorted(ostats.items()):
+                        row.append(cstats[str(cn)])
+            tsv_writer.writerow(row)
+        # now write the totals
+        row = ['Total']
+        for oc, ostats in sorted(stats.items()):
+            # oc is the operation code oc = 'OVERALL'
+            for mt, cstats in sorted(ostats.items()):
+                row.append(fold_functions[mt](cstats.values()))
+        tsv_writer.writerow(row)
+        print green('Report written to %s' % out)
 
+def _avg(seq):
+    return sum(seq) / float(len(seq))

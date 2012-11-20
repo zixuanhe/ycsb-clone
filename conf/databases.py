@@ -2,7 +2,7 @@ databases = {
 
     'aerospike' : {
         'name': 'aerospike',
-        'home': '/home/aerospike',
+        'home': '/dev/shm',
         'command': 'aerospike',
         'properties': {
             'host': 'r1.citrusleaf.local',
@@ -14,7 +14,7 @@ databases = {
 
     'couchbase' : {
         'name': 'couchbase',
-        'home': '/home/couchbase',
+        'home': '/dev/shm',
         'command': 'couchbase',
         'properties': {
             'couchbase.hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
@@ -29,7 +29,7 @@ databases = {
 
     'cassandra' : {
         'name': 'cassandra',
-        'home': '/home/cassandra',
+        'home': '/dev/shm',
         'command': 'cassandra-10',
         'properties': {
             'hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
@@ -38,13 +38,22 @@ databases = {
 
     'mongodb' : {
         'name': 'mongodb',
-        'home': '/home/mongo',
+        'home': '/dev/shm',
         'command': 'mongodb',
         'properties': {
             'mongodb.url': 'mongodb://localhost:27017',
             'mongodb.database': 'ycsb',
             'mongodb.writeConcern': 'normal',
             'mongodb.readPreference': 'primaryPreferred',
+        }
+    },
+
+    'basic' : {
+        'name': 'basic',
+        'home': '/dev/shm',
+        'command': 'basic',
+        'properties': {
+            'basicdb.verbose': 'false',
         }
     },
 
