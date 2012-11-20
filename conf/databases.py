@@ -48,4 +48,12 @@ databases = {
         }
     },
 
+    'basic' : {
+        'name': 'basic',
+        'home': '/root',
+        'command': 'basic',
+        'properties': {
+        }
+    },
+
 }
