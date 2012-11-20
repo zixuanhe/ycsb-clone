@@ -171,8 +171,14 @@ def kill():
     """Kills YCSB processes"""
     with settings(warn_only=True):
         run('ps -f -C java')
-        if confirm("Do you want to kill Java on the client?"):
+        if confirm(red("Do you want to kill Java on the client?")):
             run('killall java')
+
+@roles('client')
+def clean_logs():
+    """Removed all logs from /dev/shm"""
+    if confirm(red("Do you want to clear all logs from RAM?")):
+        run('rm -r /dev/shm/*')
 
 @runs_once
 def _build_and_upload():
