@@ -53,6 +53,7 @@ databases = {
         'home': '/root',
         'command': 'basic',
         'properties': {
+            'basicdb.verbose': 'false',
         }
     },
 
