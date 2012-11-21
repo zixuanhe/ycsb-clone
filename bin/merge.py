@@ -10,7 +10,7 @@ import re
 #        stats[oc] = {}
 #    if not(mt in stats[oc]):
 #        stats[oc][mt] = {}
-#        # now it is safe to access
+#    # now it is safe to access
 #    stats[oc][mt][cn] = float(m1.group(3))
 class NestedDict(dict):
     def __getitem__(self, key):
@@ -66,8 +66,8 @@ def merge():
     headers2 = ['']
     for oc, ostats in sorted(stats.items()):
         for mt in sorted(ostats.keys()):
-            headers1.append(oc)
-            headers2.append(mt)
+            headers1.append(oc) # operation code like OVERALL, READ, UPDATE
+            headers2.append(mt) # metric name like RunTime, AverageLatency etc
     print(tab_str(headers1))
     print(tab_str(headers2))
     # write the values for each client
