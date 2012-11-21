@@ -34,10 +34,12 @@ public class DBWrapper extends DB {
     private static final String READ_RETRY_PROPERTY = "readretrycount";
     private static final String UPDATE_RETRY_PROPERTY = "updateretrycount";
     private static final String INSERT_RETRY_PROPERTY = "insertretrycount";
+    private static final String RETRY_DELAY = "retrydelay";
 
     private int readRetryCount;
     private int updateRetryCount;
     private int insertRetryCount;
+    private int retryDelay;
 
 
     public DBWrapper(DB db, Properties p) {
@@ -47,6 +49,7 @@ public class DBWrapper extends DB {
         readRetryCount = Integer.parseInt(p.getProperty(READ_RETRY_PROPERTY, "0"));
         updateRetryCount = Integer.parseInt(p.getProperty(UPDATE_RETRY_PROPERTY, "0"));
         insertRetryCount = Integer.parseInt(p.getProperty(INSERT_RETRY_PROPERTY, "0"));
+        retryDelay = Integer.parseInt(p.getProperty(RETRY_DELAY, "0"));
     }
 
     /**
@@ -195,6 +198,9 @@ public class DBWrapper extends DB {
         int res = op.go();
         int retryCount;
         for (retryCount = 0; res != 0 && retryCount < op.count(); retryCount++) {
+            if(retryDelay > 0) {
+                delay(retryDelay);
+            }
             res = op.go();
         }
         long en = System.nanoTime();
@@ -203,6 +209,14 @@ public class DBWrapper extends DB {
         _measurements.reportReturnCode(op.name(), res);
         return res;
 
+    }
+
+    private void delay(int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            //do nothing
+        }
     }
 
     /**
