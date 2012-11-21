@@ -2,6 +2,7 @@
 
 import os
 import re
+from ordereddict import OrderedDict
 
 # special wrapper over dict to get rid of
 # silly defensive ifs like
@@ -12,7 +13,8 @@ import re
 #        stats[oc][mt] = {}
 #    # now it is safe to access
 #    stats[oc][mt][cn] = float(m1.group(3))
-class NestedDict(dict):
+
+class NestedDict(OrderedDict):
     def __getitem__(self, key):
         if key in self: return self.get(key)
         return self.setdefault(key, NestedDict())
@@ -25,17 +27,17 @@ def tab_str(seq):
 
 def merge():
     """grab all *.out, extract statistics from there and merge into TSV file """
-    fold_functions = {
-        'Operations'     : sum,
-        'RunTime'        : max,
-        'Throughput'     : sum,
-        'AverageLatency' : avg,
-        'MinLatency'     : min,
-        'MaxLatency'     : max,
-        '95thPercentileLatency' : max,
-        '99thPercentileLatency' : max,
-        'Return'         : sum
-    };
+    fold_functions = OrderedDict()
+    fold_functions[r'RunTime']               = max
+    fold_functions[r'Throughput']            = sum
+    fold_functions[r'Operations']            = sum
+    fold_functions[r'AverageLatency']        = avg
+    fold_functions[r'MinLatency']            = min
+    fold_functions[r'MaxLatency']            = max
+    fold_functions[r'95thPercentileLatency'] = max
+    fold_functions[r'99thPercentileLatency'] = max
+    fold_functions[r'Return=0']              = sum
+    fold_functions[r'Return=1']              = sum
     metrics = fold_functions.keys()
     cns = []
     stats = NestedDict()
