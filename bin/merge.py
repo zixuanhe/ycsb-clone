@@ -27,8 +27,8 @@ def merge():
     """grab all *.out, extract statistics from there and merge into TSV file """
     fold_functions = {
         'Operations'     : sum,
-        'RunTime'        : sum,
-        'Throughput'     : avg,
+        'RunTime'        : max,
+        'Throughput'     : sum,
         'AverageLatency' : avg,
         'MinLatency'     : min,
         'MaxLatency'     : max,
