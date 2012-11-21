@@ -28,7 +28,7 @@ def _getworkload(workload):
 def _outfilename(databasename, workloadname, extension, target=None):
     global timestamp
     timestampstr = timestamp.strftime('%Y-%m-%d_%H-%M')
-    if target == None:
+    if target is None:
         return '%s_%s_%s.%s' % (timestampstr, databasename, workloadname, extension)
     else:
         return '%s_%s_%s_%s.%s' % (timestampstr, databasename, workloadname, str(target), extension)
@@ -66,7 +66,7 @@ def _ycsbruncmd(database, workload, target=None):
             cmd += ' -p %s=%s' % (key, int(value) / totalclients)
         else:
             cmd += ' -p %s=%s' % (key, value)
-    if target != None:
+    if target is not None:
         cmd += ' -target %s' % str(target)
     outfile = _outfilename(database['name'], workload['name'], 'out', target)
     errfile = _outfilename(database['name'], workload['name'], 'err', target)
@@ -94,7 +94,7 @@ def workload(db, workload, target=None):
     database = _getdb(db)
     load = _getworkload(workload)
     with cd(database['home']):
-        if target != None:
+        if target is not None:
             run(_at(_ycsbruncmd(database, load, int(target) / totalclients)))
         else:
             run(_at(_ycsbruncmd(database, load)))
@@ -146,7 +146,7 @@ def getlog(db, regex='.*', do=False):
                 print blue('c%s packing ...' % cn)
                 run('tar -jcvf %s %s.err' % (bz2err_remote, f0))
                 run('tar -jcvf %s %s.out' % (bz2out_remote, f0))
-                # donwload them
+                # download them
                 print blue('c%s transferring to %s...' % (cn, tempdir_local))
                 get(bz2err_remote, bz2err_full_local)
                 get(bz2out_remote, bz2out_full_local)
@@ -160,9 +160,6 @@ def getlog(db, regex='.*', do=False):
                 # unpacked ok, remove local bz2
                 #local('rm -f %s' % bz2err_full_local)
                 #local('rm -f %s' % bz2out_full_local)
-                # print blue('c%s renaming to short names ...' % cn)
-                # local('mv %s.err c%s.err' % (f0, cn))
-                # local('mv %s.out c%s.out' % (f0, cn))
                 print blue('c%s moving to current dir ...' % cn)
                 local('mv %s/%s.err ./%s-c%s.err' % (tempdir_local, f0, f0, cn))
                 local('mv %s/%s.out ./%s-c%s.out' % (tempdir_local, f0, f0, cn))
@@ -197,71 +194,3 @@ def deploy():
         run('rm -r ycsb-0.1.4')
         run('tar xzvf ~/ycsb.tar.gz')
         
-        
-def merge(out='stats.txt'):
-    """grab all *.out, extract statistics from there and merge into TSV file """
-    fold_functions = {
-        'Operations'     : sum,
-        'RunTime'        : sum,
-        'Throughput'     : _avg,
-        'AverageLatency' : _avg,
-        'MinLatency'     : min,
-        'MaxLatency'     : max,
-        '95thPercentileLatency' : max,
-        '99thPercentileLatency' : max,
-        'Return'         : sum
-    }
-    metrics = fold_functions.keys()
-    with settings(hide('running', 'warnings'), warn_only=True):
-        stats = dict()
-        items = local('ls --format=single-column *.out', capture=True).split("\n")
-        pcn = re.compile(r'.*?-c(\d)\.out')
-        pln = re.compile(r'\[(\w+)\], (.*?), (\d+)')
-        # gather stats from all files=items
-        for item in items:
-            with open(item) as file:
-                m0 = pcn.search(item)
-                if m0:
-                    cn = m0.group(1)
-                    for line in file:
-                        for mt in metrics:
-                            if mt in line:
-                                m1 = pln.search(line)
-                                if m1:
-                                    oc = m1.group(1) # operation code
-                                    if not(oc in stats):
-                                        stats[oc] = {}
-                                    if not(mt in stats[oc]):
-                                        stats[oc][mt] = {}
-                                    # not it is safe to access
-                                    stats[oc][mt][cn] = float(m1.group(3))
-    # stats is the dictionary like this:
-    #OVERALL RunTime {'1': 1500.0, '3': 2295.0, '2': 1558.0, '4': 2279.0}
-    # ...
-    #UPDATE Return=1 {'1': 477.0, '3': 488.0, '2': 514.0, '4': 522.0}
-    with open(out, 'w') as file:
-        tsv_writer = csv.writer(file, delimiter='\t')
-        headers = []
-        for oc, ostats in sorted(stats.items()):
-            for mt in sorted(ostats.keys()):
-                 headers.append(oc + '-' + mt)
-        tsv_writer.writerow(headers)
-        # write the values for each client
-        for cn in range(1,4):
-            row = [str(cn)]
-            for oc, ostats in sorted(stats.items()):
-                    # oc is the operation code oc = 'OVERALL'
-                    for mt, cstats in sorted(ostats.items()):
-                        row.append(cstats[str(cn)])
-            tsv_writer.writerow(row)
-        # now write the totals
-        row = ['Total']
-        for oc, ostats in sorted(stats.items()):
-            # oc is the operation code oc = 'OVERALL'
-            for mt, cstats in sorted(ostats.items()):
-                row.append(fold_functions[mt](cstats.values()))
-        tsv_writer.writerow(row)
-        print green('Report written to %s' % out)
-
-def _avg(seq):
-    return sum(seq) / float(len(seq))
