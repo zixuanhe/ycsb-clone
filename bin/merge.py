@@ -139,6 +139,7 @@ def merge():
     fold_functions['RunTime']               = max
     fold_functions['Throughput']            = sum
     fold_functions['Operations']            = sum
+    fold_functions['Retries']               = sum
     fold_functions['AverageLatency']        = avg
     fold_functions['MinLatency']            = min
     fold_functions['MaxLatency']            = max
