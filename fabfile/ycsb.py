@@ -1,8 +1,5 @@
-from collections import defaultdict
-import csv
-import re, time, os, tempfile
+import re, os, tempfile
 from datetime import datetime, timedelta
-from pdb import set_trace
 
 from fabric.api import *
 from fabric.colors import green, blue, red
