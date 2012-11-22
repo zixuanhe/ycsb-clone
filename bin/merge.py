@@ -2,6 +2,7 @@
 
 import os
 import re
+import string
 from ordereddict import OrderedDict
 
 # special wrapper over dict to get rid of
@@ -14,7 +15,7 @@ from ordereddict import OrderedDict
 #    # now it is safe to access
 #    stats[oc][mt][cn] = float(m1.group(3))
 
-class NestedDict(OrderedDict):
+class NestedDict(dict):
     def __getitem__(self, key):
         if key in self: return self.get(key)
         return self.setdefault(key, NestedDict())
@@ -28,23 +29,30 @@ def tab_str(seq):
 def merge():
     """grab all *.out, extract statistics from there and merge into TSV file """
     fold_functions = OrderedDict()
-    fold_functions[r'RunTime']               = max
-    fold_functions[r'Throughput']            = sum
-    fold_functions[r'Operations']            = sum
-    fold_functions[r'AverageLatency']        = avg
-    fold_functions[r'MinLatency']            = min
-    fold_functions[r'MaxLatency']            = max
-    fold_functions[r'95thPercentileLatency'] = max
-    fold_functions[r'99thPercentileLatency'] = max
-    fold_functions[r'Return=0']              = sum
-    fold_functions[r'Return=1']              = sum
+    # each string is inherently a regex, and those regexes should be mutually
+    # exclusive. The order of putting items in fold_functions defines the order
+    # of columns
+    fold_functions['RunTime']               = max
+    fold_functions['Throughput']            = sum
+    fold_functions['Operations']            = sum
+    fold_functions['AverageLatency']        = avg
+    fold_functions['MinLatency']            = min
+    fold_functions['MaxLatency']            = max
+    fold_functions['95thPercentileLatency'] = max
+    fold_functions['99thPercentileLatency'] = max
+    fold_functions['Return=0']              = sum
+    fold_functions['Return=[^0].*']         = sum
     metrics = fold_functions.keys()
+    regexps = map(re.compile, metrics)
     cns = []
+    # trying each regexp for each line is TERRIBLY slow, therefore
+    # we need to obtain searchable prefix to make preprocessing
+    prefixes = map(lambda mt: str(re.search('\w+', mt).group(0)), metrics)
+    # other stuff
     stats = NestedDict()
     items = filter(lambda x: str(x).endswith('.out'), os.listdir('.'))
-#    items = call(['ls --format=single-column *.out'],  shell=True).split("\n")
     pcn = re.compile(r'.*?-c(\d)\.out')
-    pln = re.compile(r'\[(\w+)\], (.*?), (\d+)')
+    pln = re.compile(r'\[(\w+)\], (.*?), (\d+(\.\d+)?)')
     # gather stats from all files=items
     for item in items:
         with open(item) as file:
@@ -53,12 +61,19 @@ def merge():
                 cn = m0.group(1)
                 cns.append(cn)
                 for line in file:
-                    for mt in metrics:
-                        if mt in line:
-                            m1 = pln.search(line)
-                            if m1:
-                                oc = m1.group(1) # operation code
-                                stats[oc][mt][cn] = float(m1.group(3))
+                    for i in range(len(prefixes)):
+                        pr = prefixes[i]
+                        if pr in line:
+                            m1 = (regexps[i]).search(line)
+                            m2 = pln.search(line)
+                            if m1 and m2:
+                                oc = m2.group(1) # operation code
+                                # cl = m2.group(2) # column
+                                mt = metrics[i]
+                                if stats[oc][mt][cn]:
+                                    stats[oc][mt][cn] += float(m2.group(3))
+                                else:
+                                    stats[oc][mt][cn] = float(m2.group(3))
     cns.sort()
     # stats is the dictionary like this:
     #OVERALL RunTime {'1': 1500.0, '3': 2295.0, '2': 1558.0, '4': 2279.0}
@@ -66,8 +81,10 @@ def merge():
     #UPDATE Return=1 {'1': 477.0, '3': 488.0, '2': 514.0, '4': 522.0}
     headers1 = ['']
     headers2 = ['']
+    # operations are sorted in the [OVERALL, READ, UPDATE] order
     for oc, ostats in sorted(stats.items()):
-        for mt in sorted(ostats.keys()):
+        keys = sorted(ostats.keys(), key=metrics.index)
+        for mt in keys:
             headers1.append(oc) # operation code like OVERALL, READ, UPDATE
             headers2.append(mt) # metric name like RunTime, AverageLatency etc
     print(tab_str(headers1))
@@ -77,15 +94,17 @@ def merge():
         row = [str(cn)]
         for oc, ostats in sorted(stats.items()):
             # oc is the operation code oc = 'OVERALL'
-            for mt, cstats in sorted(ostats.items()):
-                row.append(cstats[str(cn)])
+            keys = sorted(ostats.keys(), key=metrics.index)
+            for mt in keys:
+                row.append(ostats[mt][str(cn)])
         print(tab_str(row))
         # now write the totals
     row = ['Total']
     for oc, ostats in sorted(stats.items()):
         # oc is the operation code oc = 'OVERALL'
-        for mt, cstats in sorted(ostats.items()):
-            row.append(fold_functions[mt](cstats.values()))
+        keys = sorted(ostats.keys(), key=metrics.index)
+        for mt in keys:
+            row.append(fold_functions[mt](ostats[mt].values()))
     print(tab_str(row))
 
 if __name__=='__main__':
