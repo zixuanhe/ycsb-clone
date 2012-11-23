@@ -48,7 +48,7 @@ def merge():
     stats = NestedDict()
     items = filter(lambda x: str(x).endswith('.out'), os.listdir('.'))
     pcn = re.compile(r'.*?-c(\d)\.out')
-    pln = re.compile(r'\[(\w+)\], (.*?), (\d+(\.\d+)?)')
+    pln = re.compile(r'\[(\w+)\], (.*?), (\d+(\.\d+)?([eE]\d+)?)')
     # gather stats from all files=items
     for item in items:
         with open(item) as file:
