@@ -14,8 +14,6 @@ def scale1k(x) : return x / 1000.0
 
 def merge():
     """grab all *.out, extract statistics from there and merge into TSV file """
-    # specified order over the operation codes
-    ops = ['OVERALL', 'INSERT', 'READ', 'UPDATE']
     # each string is inherently a regex, and those regexes should be mutually
     # exclusive. The order of putting items in fold_functions defines the order
     # of columns
@@ -31,8 +29,16 @@ def merge():
     fold_functions['MaxLatency']            = max, scale1k
     fold_functions['95thPercentileLatency'] = max, same
     fold_functions['99thPercentileLatency'] = max, same
-
     metrics = fold_functions.keys()
+    # specify order and columns for the operation codes
+    overall_ops = ['RunTime', 'Throughput']
+    other_ops = [x for x in metrics if x not in overall_ops]
+    ops = OrderedDict()
+    ops['OVERALL'] = overall_ops
+    ops['INSERT']  = other_ops
+    ops['READ']    = other_ops
+    ops['UPDATE']  = other_ops
+    ops_keys = ops.keys()
     regexps = map(re.compile, metrics)
     cns = []
     # trying each regexp for each line is TERRIBLY slow, therefore
@@ -73,26 +79,33 @@ def merge():
     headers1 = ['']
     headers2 = ['']
     # operations are sorted in the [OVERALL, READ, UPDATE] order
-    for oc in sorted(stats.keys(), key=ops.index):
-        for mt in sorted(stats[oc].keys(), key=metrics.index):
+    for oc in sorted(stats.keys(), key=ops_keys.index):
+        for mt in ops[oc]:
             headers1.append(oc) # operation code like OVERALL, READ, UPDATE
             headers2.append(mt) # metric name like RunTime, AverageLatency etc
     print(tab_str(headers1))
     print(tab_str(headers2))
     # write the values for each client
+    def current(mt, ostt):
+        if str(cn) in ostt[mt]: return ostt[mt][str(cn)]
+        else: return ''
+    def total(mt, ostt):
+        try: return fold_functions[mt][0](ostt[mt].values())
+        except ValueError: return '' # eg max on empty seq
     for cn in cns:
         row = phorm(metrics, ops, stats, str(cn),
-            lambda ost, mt: ost[mt][str(cn)])
+            lambda ost, mt: current(mt, ost))
         print(tab_str(row))
-        # now write the totals
+    # now write the totals
     row = phorm(metrics, ops, stats, 'Total',
-        lambda ost, mt: fold_functions[mt][0](ost[mt].values()))
+        lambda ost, mt: total(mt, ost))
     print(tab_str(row))
 
 def phorm(metrics, ops, stats, a, op):
     row = [a]
-    for oc, ost in sorted(stats.items(), key=lambda x: ops.index(x[0])):
-        for mt in sorted(ost.keys(), key=metrics.index):
+    ops_keys = ops.keys()
+    for oc, ost in sorted(stats.items(), key=lambda x: ops_keys.index(x[0])):
+        for mt in ops[oc]:
             row.append(op(ost, mt))
     return row
 
