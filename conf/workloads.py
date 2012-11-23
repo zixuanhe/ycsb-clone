@@ -10,9 +10,10 @@ data = {
     'threadcount': 32,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
     'exportmeasurementsinterval': 30000,
-    #'readretrycount': 1000,
-    #'updateretrycount': 1000,
-    #'retrydelay': 1,
+    'warmupexecutiontime': 60000,
+    'readretrycount': 1000,
+    'updateretrycount': 1000,
+    'retrydelay': 1,
     #'readallfields': 'false',
     #'writeallfields': 'false',
 }
