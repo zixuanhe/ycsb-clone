@@ -8,6 +8,16 @@ from UserDict import DictMixin
 def avg(seq):
     return sum(seq) / float(len(seq))
 
+def avg_latency(seq):
+    return avg(map(lambda x: x/1000.0, seq))
+
+def max_latency(seq):
+    return max(map(lambda x: x/1000.0, seq))
+
+def min_latency(seq):
+    return min(map(lambda x: x/1000.0, seq))
+
+
 def merge():
     """grab all *.out, extract statistics from there and merge into TSV file """
     # specified order over the operation codes
@@ -20,13 +30,14 @@ def merge():
     fold_functions['Throughput']            = sum
     fold_functions['Operations']            = sum
     fold_functions['Retries']               = sum
-    fold_functions['AverageLatency']        = avg
-    fold_functions['MinLatency']            = min
-    fold_functions['MaxLatency']            = max
-    fold_functions['95thPercentileLatency'] = max
-    fold_functions['99thPercentileLatency'] = max
     fold_functions['Return=0']              = sum
     fold_functions['Return=[^0].*']         = sum
+    fold_functions['AverageLatency']        = avg_latency
+    fold_functions['MinLatency']            = min_latency
+    fold_functions['MaxLatency']            = max_latency
+    fold_functions['95thPercentileLatency'] = max
+    fold_functions['99thPercentileLatency'] = max
+
     metrics = fold_functions.keys()
     regexps = map(re.compile, metrics)
     cns = []
