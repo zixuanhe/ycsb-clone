@@ -1,3 +1,5 @@
+import hosts
+
 databases = {
 
     'aerospike' : {
@@ -9,6 +11,10 @@ databases = {
             'port': 3000,
             'ns': 'test',
             'set': 'YCSB',
+        },
+        'status': {
+            'hosts': hosts.env.roledefs['server'][0:1],
+            'command': '/opt/citrusleaf/bin/clmonitor -e info'
         }
     },
 
