@@ -12,7 +12,9 @@ from conf.hosts import env
 # delays and packet losses
 env.user = 'vagrant'
 env.password = 'vagrant'
-servers = hosts.env.roledefs['server']
+
+def almost_nothing():
+    return settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True)
 
 def base_time(time=None, round_sec=60, tz = hosts.timezone):
     """
@@ -27,54 +29,66 @@ def base_time(time=None, round_sec=60, tz = hosts.timezone):
     rounding = (seconds + round_sec * 1.5) // round_sec * round_sec
     return time + timedelta(0, rounding-seconds, -time.microsecond)
 
+
 def init(*srv):
     def inner_init():
-        with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
-            put('at_test.sh', 'at_test.sh', mode=0755)
-    tasks.execute(inner_init, hosts=servers)
+        put('at_test.sh', 'at_test.sh', mode=0755)
+    with almost_nothing():
+        tasks.execute(inner_init, hosts=map(lambda x: x.ip, srv))
 
-def finit(*srv):
+def finit():
     disconnect_all()
 
+def ip(s):
+    return s.ip
 
-def start(*srv):
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+def global_start(*srv):
+    def inner():
         run('echo start')
-def stop(*srv):
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
+def global_stop(*srv):
+    def inner():
         run('echo stop')
-def latency(delay, *srv):
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
+def global_latency(delay, *srv):
+    def inner():
         run('echo latency %s' % delay)
-        print green(delay)
-def block(*srv):
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
+    with almost_nothing():
+        tasks.execute(inner, delay, hosts=map(ip, list(srv)))
+def global_block(*srv):
+    def inner():
         run('echo start')
-def unblock(*srv):
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
-        run('echo start')
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
+def global_unblock(*srv):
+    def inner():
+        run('echo unblock')
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
 
 class Server:
     def __init__(self, ip):
         self.ip = ip
     def start(self):
-        tasks.execute(start, hosts=[self.ip])
+        global_start(self)
     def stop(self):
-        tasks.execute(stop, hosts=[self.ip])
+        global_stop(self)
     def latency(self, delay):
-        tasks.execute(latency, delay, hosts=[self.ip])
+        global_latency(delay, self)
     def block(self):
-        tasks.execute(block, hosts=[self.ip])
+        global_block(self)
     def unblock(self):
-        tasks.execute(unblock, hosts=[self.ip])
+        global_unblock(self)
 
 #t0 = datetime(2012,11,28,2,22,29,1234)
 #t1 = datetime(2012,11,28,2,22,31,1234)
 #print base_time(t0)
 #print base_time(t1)
-(s1,s2) = map(Server, servers)
+(s1,s2,s3,s4) = map(Server, hosts.env.roledefs['client'])
 
-init(s1, s2)
+init(s1, s2, s3, s4)
 
 #_begin(s1, s2)
 
@@ -85,5 +99,5 @@ s1.latency(0)
 s1.stop()
 s2.stop()
 
-finit(s1, s2)
+finit()
 
