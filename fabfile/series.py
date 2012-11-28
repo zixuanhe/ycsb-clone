@@ -2,10 +2,12 @@
 from fabric import tasks
 from fabric.colors import red
 import time
-from fabric.context_managers import hide, settings
+from fabric.context_managers import hide, settings, cd
 from fabric.network import disconnect_all
 from fabric.operations import run
 from conf.hosts import env
+from fabfile import ycsb
+from fabfile.ycsb import _getdb, _getworkload, _at, _ycsbruncmd, totalclients
 
 env.user = 'vagrant'
 env.password = 'vagrant'
@@ -29,28 +31,47 @@ def get_ready(srvs):
     return results
 
 
-def infinite_wait():
-    """wait until all the servers be ready"""
+def infinite_wait(delay = 10):
+    """wait until all the servers be ready, delay in seconds"""
     while True:
         rs = get_ready(clients)
         if all(rs.values()):
             break
         ns = [x[0] for x in rs.items() if x[1] == False]
         print "Awaiting for %s" % ns
-        time.sleep(10)
+        time.sleep(delay)
+
+def run_workload(db, workload, target=None):
+    """
+    Starts running of the workload.
+    Note: we cannot use ycsb.workload, because it is decorated
+    """
+    database = _getdb(db)
+    load = _getworkload(workload)
+    with cd(database['home']):
+        lock = 'run_workload.lock'
+        run('touch %s && chmod 444 %s' % (lock, lock))
+        if target is not None:
+            run(_at(_ycsbruncmd(database, load, int(target) / totalclients)))
+        else:
+            run(_at(_ycsbruncmd(database, load)))
+        run('rm -f %s' % lock)
 
 
-def run_test_series(seq):
+def run_test_series(db, workload, seq):
     """ This script takes a sequence of threshold values and executes tests """
-    for e in seq:
+    for t in seq:
         # wait until all the servers be ready
         infinite_wait()
-        print "now run the test with threshold = %s" % e
+        # fab ycsb_run:db=aerospike,workload=A,target=200000
+        run_workload(db, workload, t)
+        print "now run the test with threshold = %s" % t
 
     # end of all
     disconnect_all()
 
 if __name__ == "__main__":
-    run_test_series(map(lambda x: x*1000,
-        [1, 2, 4, 6, 8, 10, 15, 20, 25, 50, 75, 100, 125, 150, 175, 200, 10e6]))
-
+    db = 'couchbase'
+    workload='A'
+    seq = map(lambda x: x*1000, [1, 2, 4, 6, 8, 10, 15, 20, 25, 50, 75, 100, 125, 150, 175, 200, 10e6])
+    run_test_series(db, workload, seq)
