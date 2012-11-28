@@ -23,7 +23,7 @@ databases = {
         'home': '/dev/shm',
         'command': 'couchbase',
         'properties': {
-            'couchbase.hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
+            'couchbase.hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r5.citrusleaf.local',
             'couchbase.bucket': 'test',
             'couchbase.user': '',
             'couchbase.password': '',
@@ -38,7 +38,7 @@ databases = {
         'home': '/dev/shm',
         'command': 'cassandra-10',
         'properties': {
-            'hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
+            'hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r5.citrusleaf.local',
         }
     },
 
@@ -59,7 +59,7 @@ databases = {
         'home': '/dev/shm',
         'command': 'basic',
         'properties': {
-            'basicdb.verbose': 'false',
+            'basicdb.verbose': 'true',
         }
     },
 

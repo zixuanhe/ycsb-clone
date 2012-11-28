@@ -2,7 +2,7 @@ from fabric.api import env
 import pytz
 
 env.user = 'root'
-# env.password = 'thumbtack'
+env.password = 'thumbtack'
 
 env.show = ['debug']
 
