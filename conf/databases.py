@@ -4,10 +4,10 @@ databases = {
 
     'aerospike' : {
         'name': 'aerospike',
-        'home': '/dev/shm',
+        'home': '/run/shm',
         'command': 'aerospike',
         'properties': {
-            'host': 'r1.citrusleaf.local',
+            'host': 'e1.citrusleaf.local',
             'port': 3000,
             'ns': 'test',
             'set': 'YCSB',
@@ -20,10 +20,10 @@ databases = {
 
     'couchbase' : {
         'name': 'couchbase',
-        'home': '/dev/shm',
+        'home': '/run/shm',
         'command': 'couchbase',
         'properties': {
-            'couchbase.hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
+            'couchbase.hosts': 'e1.citrusleaf.local,e2.citrusleaf.local,e3.citrusleaf.local,e4.citrusleaf.local',
             'couchbase.bucket': 'test',
             'couchbase.user': '',
             'couchbase.password': '',
@@ -35,16 +35,16 @@ databases = {
 
     'cassandra' : {
         'name': 'cassandra',
-        'home': '/dev/shm',
+        'home': '/run/shm',
         'command': 'cassandra-10',
         'properties': {
-            'hosts': 'r1.citrusleaf.local,r2.citrusleaf.local,r3.citrusleaf.local,r4.citrusleaf.local',
+            'hosts': 'e1.citrusleaf.local,e2.citrusleaf.local,e3.citrusleaf.local,e4.citrusleaf.local',
         }
     },
 
     'mongodb' : {
         'name': 'mongodb',
-        'home': '/dev/shm',
+        'home': '/run/shm',
         'command': 'mongodb',
         'properties': {
             'mongodb.url': 'mongodb://localhost:27017',
@@ -56,10 +56,10 @@ databases = {
 
     'basic' : {
         'name': 'basic',
-        'home': '/dev/shm',
+        'home': '/run/shm',
         'command': 'basic',
         'properties': {
-            'basicdb.verbose': 'false',
+            'basicdb.verbose': 'true',
         }
     },
 
