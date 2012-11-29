@@ -1,7 +1,4 @@
 from fabric import tasks
-from datetime import datetime, timedelta
-from fabric.colors import green
-from fabric.context_managers import settings, hide
 from fabric.network import disconnect_all
 from fabric.operations import run, put
 from conf import hosts
@@ -10,25 +7,10 @@ from conf.hosts import env
 # the scenario to execute and stop servers remotely
 # and control network on those machines to simulate splits,
 # delays and packet losses
+from fabfile.helpers import almost_nothing
+
 env.user = 'vagrant'
 env.password = 'vagrant'
-
-def almost_nothing():
-    return settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True)
-
-def base_time(time=None, round_sec=60, tz = hosts.timezone):
-    """
-    Get the next timestamp rounded to round_sec seconds
-    the function returns some future time rounded accordingly
-    to round_sec parameter.
-    Examples: 2:22:29 -> 2:23:00
-              2:22:31 -> 2:24:00
-    """
-    if time is None: time = datetime.now(tz)
-    seconds = (time - time.min).seconds
-    rounding = (seconds + round_sec * 1.5) // round_sec * round_sec
-    return time + timedelta(0, rounding-seconds, -time.microsecond)
-
 
 def init(*srv):
     def inner_init():
