@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import sys
 
 def combinations(l):
     result = []
@@ -85,6 +86,7 @@ def report_energy(bodies=SYSTEM, pairs=PAIRS, e=0.0):
         e -= (m1 * m2) / ((dx * dx + dy * dy + dz * dz) ** 0.5)
     for (r, [vx, vy, vz], m) in bodies:
         e += m * (vx * vx + vy * vy + vz * vz) / 2.
+    sys.stderr.write("%s %s" % (len(bodies), len(pairs)))
     print("%.9f" % e)
 
 def offset_momentum(ref, bodies=SYSTEM, px=0.0, py=0.0, pz=0.0):
@@ -105,4 +107,8 @@ def main(n, ref='sun'):
     report_energy()
 
 if __name__ == '__main__':
-    main(500000)
+    if len(sys.argv) < 2:
+        sys.exit('Usage: %s count' % sys.argv[0])
+    iterations = long(sys.argv[1])
+    iterations = 500000 if iterations > 500000 else iterations
+    main(iterations)

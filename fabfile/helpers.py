@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from fabric.context_managers import settings, hide
-from fabfile.conf import hosts, databases, workloads
+from conf import hosts, databases, workloads
 
 def base_time(time=None, round_sec=60, tz = hosts.timezone):
     """

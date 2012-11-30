@@ -1,18 +1,14 @@
-from datetime import datetime
 import re, os, tempfile
 
 from fabric.api import *
 from fabric.colors import green, blue, red
 from fabric.contrib.console import confirm
 
-from fabfile.conf import workloads
+from conf import workloads
 from fabfile.helpers import get_db, get_workload, _at, get_outfilename, base_time, almost_nothing
 
-totalclients = len(env.roledefs['client'])
-timestamp = base_time()
-print green(timestamp, bold = True)
-
-def _ycsbloadcmd(database, clientno):
+def _ycsbloadcmd(database, clientno, timestamp):
+    totalclients = len(env.roledefs['client'])
     cmd = workloads.root + '/bin/ycsb load %s -s' % database['command']
     for (key, value) in database['properties'].items():
         cmd += ' -p %s=%s' % (key, value)
@@ -31,7 +27,8 @@ def _ycsbloadcmd(database, clientno):
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
 
-def _ycsbruncmd(database, workload, target=None):
+def _ycsbruncmd(database, workload, timestamp, target=None):
+    totalclients = len(env.roledefs['client'])
     cmd = workloads.root + '/bin/ycsb run %s -s' % database['command']
     for file in workload['propertyfiles']:
         cmd += ' -P %s' % file
@@ -55,45 +52,49 @@ def _client_no():
     # return env.all_hosts.index(env.host)
     return env.roledefs['client'].index(env.host)
 
+def _totalclients():
+    return len(env.roledefs['client'])
+
 @roles('client')
 def load(db):
     """Starts loading of data to the database"""
+    timestamp = base_time()
+    print green(timestamp, bold = True)
     clientno = _client_no()
     database = get_db(db)
     with cd(database['home']):
-        run(_at(_ycsbloadcmd(database, clientno)))
+        run(_at(_ycsbloadcmd(database, clientno, timestamp), timestamp))
 
 @roles('client')
-def workload(db, workload, target=None):
+def run_workload(db, workload, target=None):
     """Starts running of the workload"""
-    # clientno = _client_no()
+    timestamp = base_time()
+    print green(timestamp, bold = True)
     database = get_db(db)
     load = get_workload(workload)
     with cd(database['home']):
         if target is not None:
-            run(_at(_ycsbruncmd(database, load, int(target) / totalclients)))
+            part = int(target) / len(env.roledefs['client'])
+            run(_at(_ycsbruncmd(database, load, timestamp, part), timestamp))
         else:
-            run(_at(_ycsbruncmd(database, load)))
+            run(_at(_ycsbruncmd(database, load, timestamp), timestamp))
 
 @roles('client')
 def status(db):
     """ Shows status of the currently running YCSBs """
     with almost_nothing():
-        print blue('Scheduled:', bold = True)
-        print run('tail -n 2 /var/spool/cron/atjobs/*')
-#        print run('array=( root vagrant ); for user in ${array[@]}; do crontab -u $user -l; done')
-        print
-        print blue('Running:', bold = True)
-        print run('ps -f -C java')
-        print
         database = get_db(db)
         with(cd(database['home'])):
-            # sort the output of ls by date, the first entry should be the *.err needed
             ls_out = run('ls --format=single-column --sort=t *.lock')
-            if 'cannot access' in ls_out:
-                print blue('Lock:', bold = True), green('free')
-            else:
-                print blue('Lock:', bold = True), red('locked')
+            msg = green('free') if 'cannot access' in ls_out else red('locked')
+            print blue('Lock:', bold = True), msg
+            print blue('Scheduled:', bold = True)
+            # print run('tail -n 2 /var/spool/cron/atjobs/*')
+            print sudo('atq')
+            print blue('Running:', bold = True)
+            # print run('ps -f -C java')
+            print run('ps aux | grep python')
+            # sort the output of ls by date, the first entry should be the *.err needed
             ls_out = run('ls --format=single-column --sort=t *.err')
             if 'cannot access' in ls_out:
                 logfile = '<no any *.err files>'
@@ -104,11 +105,14 @@ def status(db):
                 tail = run('tail %s' % logfile)
             print blue('Log:', bold = True), green(logfile, bold = True)
             print tail
-            print  # skip the line for convenience
+            # print blue('List:', bold = True)
+            # ls_out = run('ls --format=single-column --sort=t')
+            # print ls_out
+            print
 
 @roles('client')
 @parallel
-def getlog(db, regex='.*', do=False):
+def get_log(db, regex='.*', do=False):
     """ Show *.err and *.out logs satisfying the regex to be transferred """
     with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
         p = re.compile(regex)
