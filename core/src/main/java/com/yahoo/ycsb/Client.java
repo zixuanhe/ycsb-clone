@@ -118,7 +118,6 @@ class StatusThread extends Thread {
 class ExportMeasurementsThread extends Thread {
     private Vector<Thread> _threads;
     private MeasurementsExporter exporter;
-
     /**
      * The interval for exporting measurements.
      */
@@ -130,36 +129,7 @@ class ExportMeasurementsThread extends Thread {
         this.sleeptime = exportmeasurementsinterval;
     }
 
-    /**
-     * Run and periodically report export measurements to file.
-     */
-    public void run() {
-        boolean alldone;
-
-        do {
-            try {
-                sleep(sleeptime);
-            } catch (InterruptedException e) {
-                //do nothing
-            }
-
-            alldone = true;
-
-            //terminate this thread when all the worker threads are done
-            for (Thread t : _threads) {
-                if (t.getState() != Thread.State.TERMINATED) {
-                    alldone = false;
-                }
-            }
-
-            try {
-                Measurements.getMeasurements().exportMeasurementsPart(exporter);
-            } catch (IOException e) {
-                e.printStackTrace();
-                e.printStackTrace(System.out);
-            }
-        }
-        while (!alldone);
+    public void exportOverall() {
         try {
             Measurements.getMeasurements().exportMeasurementsFinal(exporter);
             long opcount = 0;
@@ -183,6 +153,36 @@ class ExportMeasurementsThread extends Thread {
             e.printStackTrace();
             e.printStackTrace(System.out);
         }
+    }
+    /**
+     * Run and periodically report export measurements to file.
+     */
+    public void run() {
+        boolean alldone;
+        do {
+            try {
+                sleep(sleeptime);
+            } catch (InterruptedException e) {
+                //do nothing
+            }
+
+            alldone = true;
+
+            //terminate this thread when all the worker threads are done
+            for (Thread t : _threads) {
+                if (t.getState() != Thread.State.TERMINATED) {
+                    alldone = false;
+                }
+            }
+
+            try {
+                Measurements.getMeasurements().exportMeasurementsPart(exporter);
+            } catch (IOException e) {
+                e.printStackTrace();
+                e.printStackTrace(System.out);
+            }
+        } while (!alldone);
+        exportOverall();
     }
 }
 
@@ -420,8 +420,8 @@ class ClientThread extends Thread {
                     }
                 }
             }
+            runtime = System.currentTimeMillis() - start_time;
         }
-        runtime = System.currentTimeMillis() - start_time;
     }
 }
 
@@ -659,7 +659,6 @@ public class Client {
         //Issue #5 - remove call to stringPropertyNames to make compilable under Java 1.5
         for (Enumeration e = props.propertyNames(); e.hasMoreElements(); ) {
             String prop = (String) e.nextElement();
-
             fileprops.setProperty(prop, props.getProperty(prop));
         }
 
@@ -719,7 +718,6 @@ public class Client {
 
         try {
             Class workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
-
             workload = (Workload) workloadclass.newInstance();
         } catch (Exception e) {
             e.printStackTrace();
@@ -812,9 +810,15 @@ public class Client {
 
         long exportmeasurementsinterval = Long.parseLong(props.getProperty(EXPORT_MEASUREMENTS_INTERVAL, "1000"));
 
-        ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter, exportmeasurementsinterval);
+        final ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter, exportmeasurementsinterval);
         exportmeasurementsthread.start();
 
+        Thread hook = new Thread() {
+            public void run() {
+                exportmeasurementsthread.exportOverall();
+            }
+        };
+        Runtime.getRuntime().addShutdownHook(hook);
 
         for (Thread t : threads) {
             t.start();

@@ -118,10 +118,7 @@ public class OneMeasurementHistogram extends OneMeasurement {
 
     @Override
     public void exportMeasurementsPart(MeasurementsExporter exporter) throws IOException {
-        for (int i = 0; i < _buckets.get(); i++) {
-            exporter.write(getName(), Integer.toString(i), histogram.get(i));
-        }
-        exporter.write(getName(), ">" + _buckets.get(), histogramoverflow.get());
+        //do nothing for this type of measurements
     }
 
     private void exportGeneralMeasurements(MeasurementsExporter exporter) throws IOException {
@@ -153,7 +150,10 @@ public class OneMeasurementHistogram extends OneMeasurement {
 
     @Override
     public void exportMeasurementsFinal(MeasurementsExporter exporter) throws IOException {
-        exportMeasurementsPart(exporter);
+        for (int i = 0; i < _buckets.get(); i++) {
+            exporter.write(getName(), Integer.toString(i), histogram.get(i));
+        }
+        exporter.write(getName(), ">" + _buckets.get(), histogramoverflow.get());
         exportGeneralMeasurements(exporter);
     }
 
