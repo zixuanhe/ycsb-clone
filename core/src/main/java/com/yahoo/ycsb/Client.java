@@ -175,6 +175,7 @@ class ExportMeasurementsThread extends Thread {
             }
             exporter.write("OVERALL", "Reconnections", recon);
             exporter.write("OVERALL", "RunTime(ms)", runtime);
+            exporter.write("OVERALL", "Operations", opcount);
             double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
             exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
             exporter.close();
@@ -254,7 +255,7 @@ class ClientThread extends Thread {
     Workload _workload;
     int _opcount;
     double _target;
-    double reconnectiontarget;
+    double reconnectionthroughput;
 
     int _opsdone;
     Object _workloadstate;
@@ -263,9 +264,8 @@ class ClientThread extends Thread {
     long reconnectioncounter;
     long runtime;
 
-    private static final double CHECK_THROUGHPUT_INTERVAL = 100; // in milliseconds
-    //start checking throughput for reconnecting after this time
-    private static final double CHECK_RECONNECTION_TARGET_TIME = 1000; // in milliseconds
+    private static final double CHECK_THROUGHPUT_INTERVAL = 500; // in milliseconds
+    private static final double RECONNECTION_TIME = 10000; // in milliseconds
 
 
     /**
@@ -289,9 +289,9 @@ class ClientThread extends Thread {
         reconnectioncounter = 0;
     }
 
-    public ClientThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, double reconnectiontarget) {
+    public ClientThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, double reconnectionthroughput) {
         this(db, dotransactions, workload, props, opcount, targetperthreadperms);
-        this.reconnectiontarget = reconnectiontarget;
+        this.reconnectionthroughput = reconnectionthroughput;
     }
 
     public int getOpsDone() {
@@ -365,24 +365,34 @@ class ClientThread extends Thread {
     }
 
     protected void run(OperationHandler handler) {
+        boolean isStartReconnectionTimer = true;
         long start_time = System.currentTimeMillis();
         long interval_time = start_time;
+        long reconnection_throughput_time = 0;
         long interval_ops = 0;
         while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested()) {
             long current_time = System.currentTimeMillis();
             if (current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
                 //reconnect to the database if low throughput
-                if(reconnectiontarget > 0 && (current_time - start_time) > CHECK_RECONNECTION_TARGET_TIME) {
-                    if(reconnectiontarget > interval_ops / ((double)current_time - interval_time)) {
-                        try {
-                            System.err.println("Reconnecting to the DB...");
-                            _db.reinit();
-                            reconnectioncounter++;
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            e.printStackTrace(System.out);
+                double throughput = interval_ops / ((double) current_time - interval_time);
+                if(throughput < reconnectionthroughput) {
+                    if(isStartReconnectionTimer) {
+                        reconnection_throughput_time = System.currentTimeMillis();
+                        isStartReconnectionTimer = false;
+                    } else {
+                        if (current_time - reconnection_throughput_time > RECONNECTION_TIME) {
+                            try {
+                                System.out.println("Reconnecting to the DB...");
+                                _db.reinit();
+                                reconnectioncounter++;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                e.printStackTrace(System.out);
+                            }
                         }
                     }
+                } else {
+                    isStartReconnectionTimer = true;
                 }
                 interval_time = current_time;
                 interval_ops = 0;
