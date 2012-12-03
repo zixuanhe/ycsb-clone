@@ -118,7 +118,6 @@ class StatusThread extends Thread {
 class ExportMeasurementsThread extends Thread {
     private Vector<Thread> _threads;
     private MeasurementsExporter exporter;
-
     /**
      * The interval for exporting measurements.
      */
@@ -130,12 +129,36 @@ class ExportMeasurementsThread extends Thread {
         this.sleeptime = exportmeasurementsinterval;
     }
 
+    public void exportOverall() {
+        try {
+            Measurements.getMeasurements().exportMeasurementsFinal(exporter);
+            long opcount = 0;
+            long runtime = 0;
+            long recon = 0;
+            for(Thread t : _threads) {
+                ClientThread ct = (ClientThread) t;
+                opcount += ct.getOpsDone();
+                if(runtime < ct.getRuntime()) {
+                    runtime = ct.getRuntime();
+                }
+                recon += ct.getReconnections();
+            }
+            exporter.write("OVERALL", "Reconnections", recon);
+            exporter.write("OVERALL", "RunTime(ms)", runtime);
+            exporter.write("OVERALL", "Operations", opcount);
+            double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
+            exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
+            exporter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            e.printStackTrace(System.out);
+        }
+    }
     /**
      * Run and periodically report export measurements to file.
      */
     public void run() {
         boolean alldone;
-
         do {
             try {
                 sleep(sleeptime);
@@ -158,30 +181,8 @@ class ExportMeasurementsThread extends Thread {
                 e.printStackTrace();
                 e.printStackTrace(System.out);
             }
-        }
-        while (!alldone);
-        try {
-            Measurements.getMeasurements().exportMeasurementsFinal(exporter);
-            long opcount = 0;
-            long runtime = 0;
-            long recon = 0;
-            for(Thread t : _threads) {
-                ClientThread ct = (ClientThread) t;
-                opcount += ct.getOpsDone();
-                if(runtime < ct.getRuntime()) {
-                    runtime = ct.getRuntime();
-                }
-                recon += ct.getReconnections();
-            }
-            exporter.write("OVERALL", "Reconnections", recon);
-            exporter.write("OVERALL", "RunTime(ms)", runtime);
-            double throughput = 1000.0 * ((double) opcount) / ((double) runtime);
-            exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
-            exporter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            e.printStackTrace(System.out);
-        }
+        } while (!alldone);
+        exportOverall();
     }
 }
 
@@ -254,7 +255,7 @@ class ClientThread extends Thread {
     Workload _workload;
     int _opcount;
     double _target;
-    double reconnectiontarget;
+    double reconnectionthroughput;
 
     int _opsdone;
     Object _workloadstate;
@@ -263,9 +264,8 @@ class ClientThread extends Thread {
     long reconnectioncounter;
     long runtime;
 
-    private static final double CHECK_THROUGHPUT_INTERVAL = 100; // in milliseconds
-    //start checking throughput for reconnecting after this time
-    private static final double CHECK_RECONNECTION_TARGET_TIME = 1000; // in milliseconds
+    private static final double CHECK_THROUGHPUT_INTERVAL = 500; // in milliseconds
+    private static final double RECONNECTION_TIME = 10000; // in milliseconds
 
 
     /**
@@ -289,9 +289,9 @@ class ClientThread extends Thread {
         reconnectioncounter = 0;
     }
 
-    public ClientThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, double reconnectiontarget) {
+    public ClientThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, double reconnectionthroughput) {
         this(db, dotransactions, workload, props, opcount, targetperthreadperms);
-        this.reconnectiontarget = reconnectiontarget;
+        this.reconnectionthroughput = reconnectionthroughput;
     }
 
     public int getOpsDone() {
@@ -365,24 +365,34 @@ class ClientThread extends Thread {
     }
 
     protected void run(OperationHandler handler) {
+        boolean isStartReconnectionTimer = true;
         long start_time = System.currentTimeMillis();
         long interval_time = start_time;
+        long reconnection_throughput_time = 0;
         long interval_ops = 0;
         while (((_opcount == 0) || (_opsdone < _opcount)) && !_workload.isStopRequested()) {
             long current_time = System.currentTimeMillis();
             if (current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
                 //reconnect to the database if low throughput
-                if(reconnectiontarget > 0 && (current_time - start_time) > CHECK_RECONNECTION_TARGET_TIME) {
-                    if(reconnectiontarget > interval_ops / ((double)current_time - interval_time)) {
-                        try {
-                            System.err.println("Reconnecting to the DB...");
-                            _db.reinit();
-                            reconnectioncounter++;
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            e.printStackTrace(System.out);
+                double throughput = interval_ops / ((double) current_time - interval_time);
+                if(throughput < reconnectionthroughput) {
+                    if(isStartReconnectionTimer) {
+                        reconnection_throughput_time = System.currentTimeMillis();
+                        isStartReconnectionTimer = false;
+                    } else {
+                        if (current_time - reconnection_throughput_time > RECONNECTION_TIME) {
+                            try {
+                                System.out.println("Reconnecting to the DB...");
+                                _db.reinit();
+                                reconnectioncounter++;
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                                e.printStackTrace(System.out);
+                            }
                         }
                     }
+                } else {
+                    isStartReconnectionTimer = true;
                 }
                 interval_time = current_time;
                 interval_ops = 0;
@@ -410,8 +420,8 @@ class ClientThread extends Thread {
                     }
                 }
             }
+            runtime = System.currentTimeMillis() - start_time;
         }
-        runtime = System.currentTimeMillis() - start_time;
     }
 }
 
@@ -649,7 +659,6 @@ public class Client {
         //Issue #5 - remove call to stringPropertyNames to make compilable under Java 1.5
         for (Enumeration e = props.propertyNames(); e.hasMoreElements(); ) {
             String prop = (String) e.nextElement();
-
             fileprops.setProperty(prop, props.getProperty(prop));
         }
 
@@ -709,7 +718,6 @@ public class Client {
 
         try {
             Class workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
-
             workload = (Workload) workloadclass.newInstance();
         } catch (Exception e) {
             e.printStackTrace();
@@ -802,9 +810,15 @@ public class Client {
 
         long exportmeasurementsinterval = Long.parseLong(props.getProperty(EXPORT_MEASUREMENTS_INTERVAL, "1000"));
 
-        ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter, exportmeasurementsinterval);
+        final ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter, exportmeasurementsinterval);
         exportmeasurementsthread.start();
 
+        Thread hook = new Thread() {
+            public void run() {
+                exportmeasurementsthread.exportOverall();
+            }
+        };
+        Runtime.getRuntime().addShutdownHook(hook);
 
         for (Thread t : threads) {
             t.start();

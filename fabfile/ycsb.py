@@ -38,7 +38,8 @@ def _ycsbloadcmd(database, clientno, timestamp):
 
 def _ycsbruncmd(database, workload, timestamp, target=None):
     totalclients = len(env.roledefs['client'])
-    cmd = workloads.root + '/bin/ycsb run %s -s' % database['command']
+    cmd = workloads.root + '/bin/ycsb'
+    cmd += ' run %s -s' % database['command']
     for file in workload['propertyfiles']:
         cmd += ' -P %s' % file
     for (key, value) in _getproperties(database, workload).items():
