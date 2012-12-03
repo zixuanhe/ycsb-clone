@@ -1,39 +1,14 @@
 import re, os, tempfile
-from datetime import datetime, timedelta
 
 from fabric.api import *
 from fabric.colors import green, blue, red
 from fabric.contrib.console import confirm
 
-from conf import hosts, workloads, databases
+from conf import workloads
+from fabfile.helpers import get_db, get_workload, _at, get_outfilename, base_time, almost_nothing
 
-totalclients = len(env.roledefs['client'])
-# clientno = 0 # obsolete
-timestamp = datetime.now(hosts.timezone).replace(second=0, microsecond=0) + timedelta(minutes=2)
-print timestamp
-
-def _getdb(database):
-    if not databases.databases.has_key(database):
-        raise Exception("unconfigured database '%s'" % database)
-    return databases.databases[database]
-
-def _getworkload(workload):
-    if not workloads.workloads.has_key(workload):
-        raise Exception("unconfigured workload '%s'" % workload)
-    return workloads.workloads[workload]
-
-def _outfilename(databasename, workloadname, extension, target=None):
-    global timestamp
-    timestampstr = timestamp.strftime('%Y-%m-%d_%H-%M')
-    if target is None:
-        return '%s_%s_%s.%s' % (timestampstr, databasename, workloadname, extension)
-    else:
-        return '%s_%s_%s_%s.%s' % (timestampstr, databasename, workloadname, str(target), extension)
-
-def _at(cmd, time=timestamp):
-    return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))
-
-def _ycsbloadcmd(database, clientno):
+def _ycsbloadcmd(database, clientno, timestamp):
+    totalclients = len(env.roledefs['client'])
     cmd = workloads.root + '/bin/ycsb load %s -s' % database['command']
     for (key, value) in database['properties'].items():
         cmd += ' -p %s=%s' % (key, value)
@@ -46,14 +21,16 @@ def _ycsbloadcmd(database, clientno):
     insertstart = insertcount * clientno
     cmd += ' -p insertstart=%s' % insertstart
     cmd += ' -p insertcount=%s' % insertcount
-    outfile = _outfilename(database['name'], 'load', 'out')
-    errfile = _outfilename(database['name'], 'load', 'err')
+    outfile = get_outfilename(database['name'], 'load', 'out', timestamp)
+    errfile = get_outfilename(database['name'], 'load', 'err', timestamp)
     cmd += ' > %s/%s' % (database['home'], outfile)
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
 
-def _ycsbruncmd(database, workload, target=None):
-    cmd = workloads.root + '/bin/ycsb run %s -s' % database['command']
+def _ycsbruncmd(database, workload, timestamp, target=None):
+    totalclients = len(env.roledefs['client'])
+    cmd = workloads.root + '/bin/ycsb'
+    cmd += ' run %s -s' % database['command']
     for file in workload['propertyfiles']:
         cmd += ' -P %s' % file
     for (key, value) in database['properties'].items():
@@ -65,8 +42,8 @@ def _ycsbruncmd(database, workload, target=None):
             cmd += ' -p %s=%s' % (key, value)
     if target is not None:
         cmd += ' -target %s' % str(target)
-    outfile = _outfilename(database['name'], workload['name'], 'out', target)
-    errfile = _outfilename(database['name'], workload['name'], 'err', target)
+    outfile = get_outfilename(database['name'], workload['name'], 'out', timestamp, target)
+    errfile = get_outfilename(database['name'], workload['name'], 'err', timestamp, target)
     cmd += ' > %s/%s' % (database['home'], outfile)
     cmd += ' 2> %s/%s' % (database['home'], errfile)
     return cmd
@@ -76,53 +53,71 @@ def _client_no():
     # return env.all_hosts.index(env.host)
     return env.roledefs['client'].index(env.host)
 
+def _totalclients():
+    return len(env.roledefs['client'])
+
 @roles('client')
 def load(db):
     """Starts loading of data to the database"""
+    timestamp = base_time()
+    print green(timestamp, bold = True)
     clientno = _client_no()
-    database = _getdb(db)
+    database = get_db(db)
     with cd(database['home']):
-        run(_at(_ycsbloadcmd(database, clientno)))
+        run(_at(_ycsbloadcmd(database, clientno, timestamp), timestamp))
 
 @roles('client')
-def workload(db, workload, target=None):
+def run_workload(db, workload, target=None):
     """Starts running of the workload"""
-    clientno = _client_no()
-    database = _getdb(db)
-    load = _getworkload(workload)
+    timestamp = base_time()
+    print green(timestamp, bold = True)
+    database = get_db(db)
+    load = get_workload(workload)
     with cd(database['home']):
         if target is not None:
-            run(_at(_ycsbruncmd(database, load, int(target) / totalclients)))
+            part = int(target) / len(env.roledefs['client'])
+            run(_at(_ycsbruncmd(database, load, timestamp, part), timestamp))
         else:
-            run(_at(_ycsbruncmd(database, load)))
+            run(_at(_ycsbruncmd(database, load, timestamp), timestamp))
 
 @roles('client')
 def status(db):
     """ Shows status of the currently running YCSBs """
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
-        print blue('Scheduled:', bold = True)
-        print run('tail -n 2 /var/spool/cron/atjobs/*')
-        print
-        print blue('Running:', bold = True)
-        print run('ps -f -C java')
-        print
-        database = _getdb(db)
+    with almost_nothing():
+        database = get_db(db)
         with(cd(database['home'])):
+            ls_out = run('ls --format=single-column --sort=t *.lock')
+            msg = green('free') if 'cannot access' in ls_out else red('locked')
+            print blue('Lock:', bold = True), msg
+            print blue('Scheduled:', bold = True)
+            # print run('tail -n 2 /var/spool/cron/atjobs/*')
+            print sudo('atq')
+            print blue('Running:', bold = True)
+            # print run('ps -f -C java')
+            print run('ps aux | grep python')
             # sort the output of ls by date, the first entry should be the *.err needed
-            ls = run('ls --format=single-column --sort=t *.err').split("\r\n")
-            logfile = ls[0]
-            tail = run('tail %s' % logfile)
+            ls_out = run('ls --format=single-column --sort=t *.err')
+            if 'cannot access' in ls_out:
+                logfile = '<no any *.err files>'
+                tail = ''
+            else:
+                ls = ls_out.split("\r\n")
+                logfile = ls[0]
+                tail = run('tail %s' % logfile)
             print blue('Log:', bold = True), green(logfile, bold = True)
             print tail
-            print  # skip the line for convenience
+            # print blue('List:', bold = True)
+            # ls_out = run('ls --format=single-column --sort=t')
+            # print ls_out
+            print
 
 @roles('client')
 @parallel
-def getlog(db, regex='.*', do=False):
+def get_log(db, regex='.*', do=False):
     """ Show *.err and *.out logs satisfying the regex to be transferred """
     with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
         p = re.compile(regex)
-        database = _getdb(db)
+        database = get_db(db)
         cn = _client_no() + 1
         with cd(database['home']):
             ls = run('ls --format=single-column --sort=t *.err *.out').split("\r\n")
@@ -174,7 +169,7 @@ def kill():
 def clean_logs():
     """Removed all logs from /dev/shm"""
     if confirm(red("Do you want to clear all logs from RAM?")):
-        run('rm -r /dev/shm/*')
+        run('rm -r /run/shm/*')
 
 @runs_once
 def _build_and_upload():
