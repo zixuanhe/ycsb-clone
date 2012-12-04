@@ -9,18 +9,20 @@ import pytz
 from conf import workloads, hosts
 from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing, get_outfilename
 
-LOCAL = True
+LOCAL = False
+#LOCAL = True
 if LOCAL:
     # local virtual machines
     hosts.env.user = 'vagrant'
     hosts.env.password = 'vagrant'
     timezone = pytz.timezone('CET')
-    clients = ['192.168.8.108']
-#    clients = ['192.168.8.108', '192.168.9.213', '192.168.8.41', '192.168.8.118']
+    clients = ['192.168.8.108', '192.168.9.213', '192.168.8.41', '192.168.8.118']
 else:
     # remote citrusleaf machines
     timezone = hosts.timezone
     clients = hosts.env.roledefs['client']
+
+#clients = [clients[0]]
 
 # benchmark file name, it bothers the CPU and consumes time and energy
 benchmark = 'execute.sh'
@@ -125,13 +127,9 @@ def run_test_series(db, seq):
 
 if __name__ == "__main__":
     # hardcoded
-    db = 'couchbase'
-    workload = 'A'
+    db = 'basic'
     # from command line
     # db = sys.argv[1]
-    # workload = sys.argv[2]
-    #
-    # 0 means infinity
-    # seq = map(lambda t: t * 1000, [1, 2, 4, 6, 8, 10, 15, 20, 25, 50, 75, 100, 0])
-    seq = map(lambda t: ('A', t * 1000), [100, 200, 0])
+    seq = map(lambda t: ('C', t * 1000), [100, 200, 0]) # 0 means infinity
+    print ('seq = %s' % seq)
     run_test_series(db, seq)
