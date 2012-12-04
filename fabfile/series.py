@@ -99,11 +99,15 @@ def submit_workload(the_hosts, db, workload, the_time, target = None):
     with almost_nothing():
         tasks.execute(inner_submit_workload, hosts=the_hosts)
 
-def delay(t):
+def delay(wl, t):
     """ Returns estimated delay (run time) for the test with parameter t.
     In seconds """
-    # get operation count
     opc = workloads.data['operationcount']
+    # redefine operation count if the workload hath
+    workload = get_workload(wl)
+    if 'properties' in workload:
+        if 'operationcount' in workload['properties']:
+            opc = long(workload['properties']['operationcount'])
     t = opc if t is None else t
     d = int((opc / t) * 1.1)
     return timedelta(seconds = d)
@@ -112,15 +116,15 @@ def run_test_series(db, seq):
     """ This script takes a sequence of threshold values and executes tests """
     initialize(clients, db)
     the_time = base_time(tz = timezone)
-    for (workload, t) in seq:
+    for (wl, t) in seq:
         t = t if t > 0 else None
         # submit the task
-        submit_workload(clients, db, workload, the_time, t)
+        submit_workload(clients, db, wl, the_time, t)
         print "submitted on %s with threshold = %s" % (the_time, t)
         if LOCAL:
             the_time += timedelta(minutes = 1)
         else:
-            the_time += delay(t)
+            the_time += delay(wl, t)
             the_time = base_time(the_time, tz = timezone) # round the time up
     # end of all
     disconnect_all()
