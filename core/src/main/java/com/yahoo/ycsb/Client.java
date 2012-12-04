@@ -135,10 +135,10 @@ class ExportMeasurementsThread extends Thread {
             long opcount = 0;
             long runtime = 0;
             long recon = 0;
-            for(Thread t : _threads) {
+            for (Thread t : _threads) {
                 ClientThread ct = (ClientThread) t;
                 opcount += ct.getOpsDone();
-                if(runtime < ct.getRuntime()) {
+                if (runtime < ct.getRuntime()) {
                     runtime = ct.getRuntime();
                 }
                 recon += ct.getReconnections();
@@ -154,6 +154,7 @@ class ExportMeasurementsThread extends Thread {
             e.printStackTrace(System.out);
         }
     }
+
     /**
      * Run and periodically report export measurements to file.
      */
@@ -228,15 +229,15 @@ class WarmupThread extends ClientThread {
     }
 
     private boolean isContinue() {
-        if(exectime != 0) {
-            if(curexec < exectime) {
+        if (exectime != 0) {
+            if (curexec < exectime) {
                 return true;
             } else
                 return false;
         }
 
-        if(_opcount != 0) {
-            if(_opsdone < _opcount) {
+        if (_opcount != 0) {
+            if (_opsdone < _opcount) {
                 return true;
             } else
                 return false;
@@ -256,6 +257,7 @@ class ClientThread extends Thread {
     int _opcount;
     double _target;
     double reconnectionthroughput;
+    long reconncetiontime;
 
     int _opsdone;
     Object _workloadstate;
@@ -265,8 +267,11 @@ class ClientThread extends Thread {
     long runtime;
 
     private static final double CHECK_THROUGHPUT_INTERVAL = 500; // in milliseconds
-    private static final double RECONNECTION_TIME = 10000; // in milliseconds
 
+    public static final String RECONNECTION_THROUGHTPUT_PROPERTY = "reconnectionthroughput";
+    public static final String RECONNECTION_THROUGHTPUT_DEFAULT = "0";
+    public static final String RECONNECTION_TIME_PROPERTY = "reconnectiontime";
+    public static final String RECONNECTION_TIME_DEFAULT = "0";
 
     /**
      * Constructor.
@@ -287,11 +292,8 @@ class ClientThread extends Thread {
         _target = targetperthreadperms;
         _props = props;
         reconnectioncounter = 0;
-    }
-
-    public ClientThread(DB db, boolean dotransactions, Workload workload, Properties props, int opcount, double targetperthreadperms, double reconnectionthroughput) {
-        this(db, dotransactions, workload, props, opcount, targetperthreadperms);
-        this.reconnectionthroughput = reconnectionthroughput;
+        this.reconnectionthroughput = Double.parseDouble(props.getProperty(RECONNECTION_THROUGHTPUT_PROPERTY, RECONNECTION_THROUGHTPUT_DEFAULT)) / 1000.0;
+        this.reconncetiontime = Long.parseLong(props.getProperty(RECONNECTION_TIME_PROPERTY, RECONNECTION_TIME_DEFAULT));
     }
 
     public int getOpsDone() {
@@ -375,12 +377,12 @@ class ClientThread extends Thread {
             if (current_time - interval_time > CHECK_THROUGHPUT_INTERVAL) {
                 //reconnect to the database if low throughput
                 double throughput = interval_ops / ((double) current_time - interval_time);
-                if(throughput < reconnectionthroughput) {
-                    if(isStartReconnectionTimer) {
+                if (throughput < reconnectionthroughput) {
+                    if (isStartReconnectionTimer) {
                         reconnection_throughput_time = System.currentTimeMillis();
                         isStartReconnectionTimer = false;
                     } else {
-                        if (current_time - reconnection_throughput_time > RECONNECTION_TIME) {
+                        if (current_time - reconnection_throughput_time > reconncetiontime) {
                             try {
                                 System.out.println("Reconnecting to the DB...");
                                 _db.reinit();
@@ -412,7 +414,7 @@ class ClientThread extends Thread {
                 //because it smooths timing inaccuracies (from sleep() taking an int,
                 //current time in millis) over many operations
                 //while (System.currentTimeMillis() - interval_time < (interval_ops / _target)) {
-                while (_target < interval_ops / ((double)System.currentTimeMillis() - interval_time)) {
+                while (_target < interval_ops / ((double) System.currentTimeMillis() - interval_time)) {
                     try {
                         sleep(1);
                     } catch (InterruptedException e) {
@@ -682,8 +684,6 @@ public class Client {
             targetperthreadperms = targetperthread / 1000.0;
         }
 
-        double reconnectiontarget = Double.parseDouble(props.getProperty("reconnectiontarget", "0")) / 1000.0;
-
         System.out.println("YCSB Client 0.1");
         System.out.print("Command line:");
         for (int i = 0; i < args.length; i++) {
@@ -791,7 +791,7 @@ public class Client {
                 System.out.println("Unknown DB " + dbname);
                 System.exit(0);
             }
-            Thread t = new ClientThread(db, dotransactions, workload, props, opcount / threadcount, targetperthreadperms, reconnectiontarget);
+            Thread t = new ClientThread(db, dotransactions, workload, props, opcount / threadcount, targetperthreadperms);
             threads.add(t);
         }
 
