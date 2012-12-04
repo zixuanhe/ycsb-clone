@@ -36,5 +36,17 @@ def get_outfilename(databasename, workloadname, extension, the_time, target=None
     else:
         return '%s_%s_%s_%s.%s' % (the_time_str, databasename, workloadname, str(target), extension)
 
+def get_properties(database, workload=None):
+    properties = {}
+    for (key, value) in workloads.data.items():
+        properties[key] = value
+    for (key, value) in database['properties'].items():
+        properties[key] = value
+    if workload and workload.has_key('properties'):
+        for (key, value) in workload['properties'].items():
+            properties[key] = value
+    return properties
+
+
 def _at(cmd, time=base_time()):
     return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))

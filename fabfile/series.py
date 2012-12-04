@@ -7,7 +7,7 @@ from fabric.network import disconnect_all
 from fabric.operations import run, put
 import pytz
 from conf import workloads, hosts
-from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing, get_outfilename
+from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing, get_outfilename, get_properties
 
 LOCAL = False
 #LOCAL = True
@@ -37,7 +37,7 @@ def prepare_ycsbruncmd(thd_hosts, database, workload, the_time, target):
     par += ' run %s -s' % database['command']
     for file in workload['propertyfiles']:
         par += ' -P %s' % file
-    for (key, value) in database['properties'].items():
+    for (key, value) in get_properties(database, workload).items():
         par += ' -p %s=%s' % (key, value)
     for (key, value) in workloads.data.items():
         if key == 'operationcount':
