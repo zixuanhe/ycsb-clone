@@ -18,7 +18,6 @@ echo $$ > ${LOCKFILE}
 echo "pid $$"
 # echo "/opt/ycsb/bin/ycsb $*"
 /opt/ycsb/bin/ycsb $*
-# python nbody.py 1000000 $*
 
 # ffuts_od
 ######################################
