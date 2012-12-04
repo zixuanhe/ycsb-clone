@@ -132,6 +132,10 @@ def run_test_series(db, seq):
 if __name__ == "__main__":
     db = 'basic'       # hardcoded
     # db = sys.argv[1] # from command line
-    seq = map(lambda t: ('C', t * 1000), [100, 200, 0]) # 0 means infinity
+    times = map(lambda t: t * 1000, [100, 200, 0]) # 0 means infinity
+    # alternate 'A' and 'C' workloads, flatten them
+    seq = []
+    for d in map(lambda t: [('C', t), ('A', t)], times):
+        seq.extend(d)
     print ('seq = %s' % seq)
     run_test_series(db, seq)
