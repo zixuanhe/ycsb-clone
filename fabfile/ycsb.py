@@ -7,12 +7,21 @@ from fabric.contrib.console import confirm
 from conf import workloads
 from fabfile.helpers import get_db, get_workload, _at, get_outfilename, base_time, almost_nothing
 
+def _getproperties(database, workload):
+    properties = {}
+    for (key, value) in workloads.data.items():
+        properties[key] = value
+    for (key, value) in database['properties'].items():
+        properties[key] = value
+    if workload.has_key('properties'):
+        for (key, value) in workload['properties'].items():
+            properties[key] = value
+    return properties
+
 def _ycsbloadcmd(database, clientno, timestamp):
     totalclients = len(env.roledefs['client'])
     cmd = workloads.root + '/bin/ycsb load %s -s' % database['command']
-    for (key, value) in database['properties'].items():
-        cmd += ' -p %s=%s' % (key, value)
-    for (key, value) in workloads.data.items():
+    for (key, value) in _getproperties(database, workload).items():
         if key == 'operationcount':
             cmd += ' -p %s=%s' % (key, value / totalclients)
         else:
@@ -33,11 +42,9 @@ def _ycsbruncmd(database, workload, timestamp, target=None):
     cmd += ' run %s -s' % database['command']
     for file in workload['propertyfiles']:
         cmd += ' -P %s' % file
-    for (key, value) in database['properties'].items():
-        cmd += ' -p %s=%s' % (key, value)
-    for (key, value) in workloads.data.items():
+    for (key, value) in _getproperties(database, workload).items():
         if key == 'operationcount':
-            cmd += ' -p %s=%s' % (key, int(value) / totalclients)
+            cmd += ' -p %s=%s' % (key, value / totalclients)
         else:
             cmd += ' -p %s=%s' % (key, value)
     if target is not None:
@@ -93,8 +100,8 @@ def status(db):
             # print run('tail -n 2 /var/spool/cron/atjobs/*')
             print sudo('atq')
             print blue('Running:', bold = True)
-            # print run('ps -f -C java')
-            print run('ps aux | grep python')
+            print run('ps -f -C java')
+            # print run('ps aux | grep python')
             # sort the output of ls by date, the first entry should be the *.err needed
             ls_out = run('ls --format=single-column --sort=t *.err')
             if 'cannot access' in ls_out:

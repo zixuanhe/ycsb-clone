@@ -59,7 +59,7 @@ databases = {
         'home': '/run/shm',
         'command': 'basic',
         'properties': {
-            'basicdb.verbose': 'true',
+            'basicdb.verbose': 'false',
         }
     },
 
