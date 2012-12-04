@@ -130,10 +130,8 @@ def run_test_series(db, seq):
     disconnect_all()
 
 if __name__ == "__main__":
-    # hardcoded
-    db = 'basic'
-    # from command line
-    # db = sys.argv[1]
+    db = 'basic'       # hardcoded
+    # db = sys.argv[1] # from command line
     seq = map(lambda t: ('C', t * 1000), [100, 200, 0]) # 0 means infinity
     print ('seq = %s' % seq)
     run_test_series(db, seq)
