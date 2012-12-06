@@ -1,8 +1,8 @@
-root = '/opt/ycsb'
+root = '/opt/ycsb'  #root of YCSB installation
 
 data = {    #global YSCB properties
-    #'recordcount': 500000000,  #SSD
-    'recordcount': 50000000,    #RAM
+    'recordcount': 500000000,  #SSD
+    #'recordcount': 50000000,    #RAM
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
@@ -20,15 +20,15 @@ data = {    #global YSCB properties
 }
 
 workloads = {
-    'A': {
+    'A': {  #Heavy Update workload
         'name': 'workloada',    #name of the workload to be part of the log files
         'propertyfiles': [ root + '/workloads/workloada' ], #workload properties files
     },
-    'B': {
+    'B': {  #Mostly Read workload
         'name': 'workloadb',
         'propertyfiles': [ root + '/workloads/workloadb' ],
     },
-    'C': {
+    'C': {  #Read Only workload
         'name': 'workloadc',
         'propertyfiles': [ root + '/workloads/workloadc' ],
         'properties': {     #additional workload properties, overrides the global ones

@@ -3,18 +3,18 @@ import hosts
 databases = {
 
     'aerospike' : {
-        'name': 'aerospike',
-        'home': '/run/shm',
-        'command': 'aerospike',
-        'properties': {
-            'host': 'e1.citrusleaf.local',
+        'name': 'aerospike',    #name of the database (used to form the logfile name)
+        'home': '/run/shm',     #database home, to put logs there
+        'command': 'aerospike', #database name to pass to ycsb command
+        'properties': {         #properties to pass to ycsb command as -p name=value
+            'host': 'e1.citrusleaf.local',  #database connection params
             'port': 3000,
             'ns': 'test',
             'set': 'YCSB',
         },
         'status': {
-            'hosts': hosts.env.roledefs['server'][0:1],
-            'command': '/opt/citrusleaf/bin/clmonitor -e info'
+            'hosts': hosts.env.roledefs['server'][0:1],     #hosts on which to run the status command
+            'command': '/opt/citrusleaf/bin/clmonitor -e info'  #the status command
         }
     },
 
@@ -54,7 +54,7 @@ databases = {
         }
     },
 
-    'basic' : {
+    'basic' : { #fake database
         'name': 'basic',
         'home': '/run/shm',
         'command': 'basic',

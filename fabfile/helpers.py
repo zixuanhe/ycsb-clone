@@ -32,7 +32,7 @@ def get_workload(workload):
 def get_outfilename(databasename, workloadname, extension, the_time, target=None):
     the_time_str = the_time.strftime('%Y-%m-%d_%H-%M')
     if target is None:
-        return '%s_%s_%s_.%s' % (the_time_str, databasename, workloadname, extension)
+        return '%s_%s_%s.%s' % (the_time_str, databasename, workloadname, extension)
     else:
         return '%s_%s_%s_%s.%s' % (the_time_str, databasename, workloadname, str(target), extension)
 

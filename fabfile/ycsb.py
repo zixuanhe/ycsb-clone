@@ -110,7 +110,7 @@ def status(db):
 @roles('client')
 @parallel
 def get_log(db, regex='.*', do=False):
-    """ Show *.err and *.out logs satisfying the regex to be transferred """
+    """ Shows and downloads YCSB logs """
     with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
         p = re.compile(regex)
         database = get_db(db)
@@ -163,7 +163,7 @@ def kill():
 
 @roles('client')
 def clean_logs():
-    """Removed all logs from /dev/shm"""
+    """Removes all logs from /run/shm"""
     if confirm(red("Do you want to clear all logs from RAM?")):
         run('rm -r /run/shm/*')
 
