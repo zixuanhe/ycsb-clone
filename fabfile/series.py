@@ -1,7 +1,4 @@
-#!/usr/bin/python
-import sys, os
-sys.path.insert(0, os.path.abspath('..'))
-
+import os
 from datetime import timedelta
 import re
 from fabric import tasks
@@ -29,6 +26,7 @@ else:
 
 # benchmark file name, it bothers the CPU and consumes time and energy
 benchmark = 'execute.sh'
+
 
 def prepare_ycsbruncmd(thd_hosts, database, workload, the_time, target):
     # /opt/ycsb/bin/ycsb run couchbase ... -target 25000
@@ -66,14 +64,14 @@ def initialize(the_hosts, db):
         with cd(database['home']):
             if LOCAL:
                 run('rm -rf ./*')
-                put(benchmark, benchmark, mode=0744)
+                put(os.path.join(os.path.dirname(__file__), benchmark), benchmark, mode=0744)
                 put('nbody.py', 'nbody.py')
                 run('sed -i "s/\/opt\/ycsb\/bin\/ycsb \$\*/python nbody.py \$\*/g" %s' % benchmark)
                 # put('nbody.java', 'nbody.java')
                 # run('javac nbody.java')
                 # clear all the tasks that submitted so far
             else:
-                put(benchmark, benchmark, mode=0744)
+                put(os.path.join(os.path.dirname(__file__), benchmark), benchmark, mode=0744)
             tasks = run('atq').split('\r\n')
             tid = []
             for task in tasks:
@@ -137,8 +135,8 @@ if __name__ == "__main__":
     # db = sys.argv[1] # from command line
     times = map(lambda t: t * 1000, [100, 200, 0]) # 0 means infinity
     # alternate 'A' and 'C' workloads, flatten them
-    seq = []
-    for d in map(lambda t: [('C', t), ('A', t)], times):
+    seq = [('C', 0)]
+    for d in map(lambda t: [('A', t), ('B', t)], times):
         seq.extend(d)
     print ('seq = %s' % seq)
     run_test_series(db, seq)
