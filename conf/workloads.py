@@ -11,7 +11,7 @@ data = {    #global YSCB properties
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
     'exportmeasurementsinterval': 30000,
     #'warmupexecutiontime': 60000,
-    'insertretrycount': 1000000,
+    'insertretrycount': 1000000000,
     'readretrycount': 1000,
     'updateretrycount': 1000,
     'retrydelay': 1,

@@ -7,7 +7,7 @@ from fabric.contrib.console import confirm
 from conf import workloads
 from fabfile.helpers import get_db, get_workload, _at, get_outfilename, base_time, almost_nothing, get_properties
 
-def _ycsbloadcmd(database, clientno, timestamp):
+def _ycsbloadcmd(database, clientno, timestamp, target=None):
     totalclients = len(env.roledefs['client'])
     cmd = workloads.root + '/bin/ycsb load %s -s' % database['command']
     for (key, value) in get_properties(database).items():
@@ -19,6 +19,8 @@ def _ycsbloadcmd(database, clientno, timestamp):
     insertstart = insertcount * clientno
     cmd += ' -p insertstart=%s' % insertstart
     cmd += ' -p insertcount=%s' % insertcount
+    if target is not None:
+        cmd += ' -target %s' % str(target)
     outfile = get_outfilename(database['name'], 'load', 'out', timestamp)
     errfile = get_outfilename(database['name'], 'load', 'err', timestamp)
     cmd += ' > %s/%s' % (database['home'], outfile)
@@ -53,14 +55,18 @@ def _totalclients():
     return len(env.roledefs['client'])
 
 @roles('client')
-def load(db):
+def load(db, target=None):
     """Starts loading of data to the database"""
     timestamp = base_time()
     print green(timestamp, bold = True)
     clientno = _client_no()
     database = get_db(db)
     with cd(database['home']):
-        run(_at(_ycsbloadcmd(database, clientno, timestamp), timestamp))
+        if target is not None:
+            part = int(target) / len(env.roledefs['client'])
+            run(_at(_ycsbloadcmd(database, clientno, timestamp, part), timestamp))
+        else:
+            run(_at(_ycsbloadcmd(database, clientno, timestamp), timestamp))
 
 @roles('client')
 def run_workload(db, workload, target=None):
