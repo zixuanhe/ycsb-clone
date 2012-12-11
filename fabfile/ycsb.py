@@ -116,48 +116,79 @@ def status(db):
 @roles('client')
 @parallel
 def get_log(db, regex='.*', do=False):
-    """ Shows and downloads YCSB logs """
-    with settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True):
-        p = re.compile(regex)
-        database = get_db(db)
+    """ Download *.err and *.out logs satisfying the regex to be transferred
+    OR transfer all logs in the batch dir
+    """
+    database = get_db(db)
+    with almost_nothing():
         cn = _client_no() + 1
+        is_dir = False
         with cd(database['home']):
+            p = re.compile(regex)
             ls = run('ls --format=single-column --sort=t *.err *.out').split("\r\n")
-            file_name = [f for f in ls if p.search(f)][0] # the most recent file satisfying pattern
-            f0 = os.path.splitext(file_name)[0]           # strip off extension
-        # now we have the map {'host' -> 'xxx'}
-        # perform self-check and maybe continue
-        print blue('Filename at c%s: ' % cn, bold = True), green(f0, bold = True)
+            file_names = [f for f in ls if p.search(f)]
+            if len(file_names) > 0:
+                # the most recent file satisfying pattern
+                (f0, f1) = os.path.splitext(file_names[0]) # split to (path, ext)
+            else:
+                # list dirs only
+                ls = run('ls --format=single-column --sort=t -d -- */').split("\r\n")
+                dir_names = [f.strip('/') for f in ls if p.search(f)]
+                f0 = dir_names[0]
+                is_dir = True
+            # now we have the map {'host' -> 'xxx'}
+            # perform self-check and maybe continue
+            print blue('Filename at c%s: ' % cn, bold = True), green(f0, bold = True)
         # now do the processing, if enabled
         if do:
             with cd(database['home']):
-                tempdir_local = '%s/c%s' % (tempfile.gettempdir(), cn)
-                bz2err_remote = '%s-c%s-err.bz2' % (f0, cn)
-                bz2out_remote = '%s-c%s-out.bz2' % (f0, cn)
-                bz2err_full_local = '%s/%s-err.bz2' % (tempdir_local, f0)
-                bz2out_full_local = '%s/%s-out.bz2' % (tempdir_local, f0)
-                # packing
-                print blue('c%s packing ...' % cn)
-                run('tar -jcvf %s %s.err' % (bz2err_remote, f0))
-                run('tar -jcvf %s %s.out' % (bz2out_remote, f0))
-                # download them
-                print blue('c%s transferring to %s...' % (cn, tempdir_local))
-                get(bz2err_remote, bz2err_full_local)
-                get(bz2out_remote, bz2out_full_local)
-                # the files are here, remove remote bz2
-                run('rm -f %s' % bz2err_remote)
-                run('rm -f %s' % bz2out_remote)
-                # unpacking to temp dir
-                print blue('c%s unpacking ...' % cn)
-                local('tar -xvf %s -C %s' % (bz2err_full_local, tempdir_local))
-                local('tar -xvf %s -C %s' % (bz2out_full_local, tempdir_local))
-                # unpacked ok, remove local bz2
-                #local('rm -f %s' % bz2err_full_local)
-                #local('rm -f %s' % bz2out_full_local)
-                print blue('c%s moving to current dir ...' % cn)
-                local('mv %s/%s.err ./%s-c%s.err' % (tempdir_local, f0, f0, cn))
-                local('mv %s/%s.out ./%s-c%s.out' % (tempdir_local, f0, f0, cn))
-                local('rm -rf %s' % tempdir_local)
+                if is_dir:
+                    tempdir_local = '%s/c%s' % (tempfile.gettempdir(), cn)
+                    bz2_remote = '%s-c%s-dir.bz2' % (f0, cn)
+                    bz2_full_local = '%s/%s-dir.bz2' % (tempdir_local, f0)
+                    # packing
+                    print blue('c%s packing ...' % cn)
+                    run('tar -jcvf %s %s' % (bz2_remote, f0))
+                    # download them
+                    print blue('c%s transferring to %s...' % (cn, tempdir_local))
+                    get(bz2_remote, bz2_full_local)
+                    # the files are here, remove remote bz2
+                    run('rm -f %s' % bz2_remote)
+                    # unpacking to temp dir
+                    print blue('c%s unpacking ...' % cn)
+                    local('tar -xvf %s -C %s' % (bz2_full_local, tempdir_local))
+                    print blue('c%s moving to current dir ...' % cn)
+                    local('mv %s/%s ./%s-c%s' % (tempdir_local, f0, f0, cn))
+                    local('rm -rf %s' % tempdir_local)
+                else:
+                    tempdir_local = '%s/c%s' % (tempfile.gettempdir(), cn)
+                    bz2err_remote = '%s-c%s-err.bz2' % (f0, cn)
+                    bz2out_remote = '%s-c%s-out.bz2' % (f0, cn)
+                    bz2err_full_local = '%s/%s-err.bz2' % (tempdir_local, f0)
+                    bz2out_full_local = '%s/%s-out.bz2' % (tempdir_local, f0)
+                    # packing
+                    print blue('c%s packing ...' % cn)
+                    run('tar -jcvf %s %s.err' % (bz2err_remote, f0))
+                    run('tar -jcvf %s %s.out' % (bz2out_remote, f0))
+                    # download them
+                    print blue('c%s transferring to %s...' % (cn, tempdir_local))
+                    get(bz2err_remote, bz2err_full_local)
+                    get(bz2out_remote, bz2out_full_local)
+                    # the files are here, remove remote bz2
+                    run('rm -f %s' % bz2err_remote)
+                    run('rm -f %s' % bz2out_remote)
+                    # unpacking to temp dir
+                    print blue('c%s unpacking ...' % cn)
+                    local('tar -xvf %s -C %s' % (bz2err_full_local, tempdir_local))
+                    local('tar -xvf %s -C %s' % (bz2out_full_local, tempdir_local))
+                    # unpacked ok, remove local bz2
+                    #local('rm -f %s' % bz2err_full_local)
+                    #local('rm -f %s' % bz2out_full_local)
+                    print blue('c%s moving to current dir ...' % cn)
+                    local('mv %s/%s.err ./%s-c%s.err' % (tempdir_local, f0, f0, cn))
+                    local('mv %s/%s.out ./%s-c%s.out' % (tempdir_local, f0, f0, cn))
+                    local('rm -rf %s' % tempdir_local)
+
 
 @roles('client')
 def kill():
