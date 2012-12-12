@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+import time
 
 def combinations(l):
     result = []
@@ -75,7 +76,6 @@ def advance(dt, n, bodies=SYSTEM, pairs=PAIRS):
             r[1] += dt * vy
             r[2] += dt * vz
 
-
 def report_energy(bodies=SYSTEM, pairs=PAIRS, e=0.0):
 
     for (((x1, y1, z1), v1, m1),
@@ -86,6 +86,8 @@ def report_energy(bodies=SYSTEM, pairs=PAIRS, e=0.0):
         e -= (m1 * m2) / ((dx * dx + dy * dy + dz * dz) ** 0.5)
     for (r, [vx, vy, vz], m) in bodies:
         e += m * (vx * vx + vy * vy + vz * vz) / 2.
+        time.sleep(1)
+        print("%.9f" % (m * (vx * vx + vy * vy + vz * vz) / 2.))
     sys.stderr.write("%s %s\n" % (len(bodies), len(pairs)))
     print("%.9f" % e)
 
@@ -109,6 +111,10 @@ def main(n, ref='sun'):
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit('Usage: %s count' % sys.argv[0])
-    iterations = long(sys.argv[1])
-    iterations = 500000 if iterations > 500000 else iterations
+    try:
+        iterations = long(sys.argv[1])
+        if iterations > 1000:
+            iterations = 1000
+    except ValueError:
+        iterations = 1000
     main(iterations)
