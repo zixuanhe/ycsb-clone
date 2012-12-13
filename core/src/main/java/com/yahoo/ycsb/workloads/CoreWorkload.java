@@ -326,24 +326,7 @@ public class CoreWorkload extends Workload
 		
 		readallfields=Boolean.parseBoolean(p.getProperty(READ_ALL_FIELDS_PROPERTY,READ_ALL_FIELDS_PROPERTY_DEFAULT));
 		writeallfields=Boolean.parseBoolean(p.getProperty(WRITE_ALL_FIELDS_PROPERTY,WRITE_ALL_FIELDS_PROPERTY_DEFAULT));
-		
-		if (p.getProperty(INSERT_ORDER_PROPERTY,INSERT_ORDER_PROPERTY_DEFAULT).compareTo("hashed")==0)
-		{
-			orderedinserts=false;
-		}
-		else if (requestdistrib.compareTo("exponential")==0)
-		{
-                    double percentile = Double.parseDouble(p.getProperty(ExponentialGenerator.EXPONENTIAL_PERCENTILE_PROPERTY,
-                                                                         ExponentialGenerator.EXPONENTIAL_PERCENTILE_DEFAULT));
-                    double frac       = Double.parseDouble(p.getProperty(ExponentialGenerator.EXPONENTIAL_FRAC_PROPERTY,
-                                                                         ExponentialGenerator.EXPONENTIAL_FRAC_DEFAULT));
-                    keychooser = new ExponentialGenerator(percentile, recordcount*frac);
-		}
-		else
-		{
-			orderedinserts=true;
-		}
-
+        orderedinserts = !p.getProperty(INSERT_ORDER_PROPERTY,INSERT_ORDER_PROPERTY_DEFAULT).equals("hashed");
 		keysequence=new CounterGenerator(insertstart);
 		operationchooser=new DiscreteGenerator();
 		if (readproportion>0)
@@ -378,6 +361,14 @@ public class CoreWorkload extends Workload
 		}
         else if (requestdistrib.compareTo("uniquerandom") == 0) {
             keychooser = new UniqueRandomGenerator(recordcount);
+        }
+        else if (requestdistrib.compareTo("exponential")==0)
+        {
+            double percentile = Double.parseDouble(p.getProperty(ExponentialGenerator.EXPONENTIAL_PERCENTILE_PROPERTY,
+                    ExponentialGenerator.EXPONENTIAL_PERCENTILE_DEFAULT));
+            double frac       = Double.parseDouble(p.getProperty(ExponentialGenerator.EXPONENTIAL_FRAC_PROPERTY,
+                    ExponentialGenerator.EXPONENTIAL_FRAC_DEFAULT));
+            keychooser = new ExponentialGenerator(percentile, recordcount*frac);
         }
 		else if (requestdistrib.compareTo("zipfian")==0)
 		{
