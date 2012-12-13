@@ -87,10 +87,14 @@ def status(db):
     """ Shows status of the currently running YCSBs """
     with almost_nothing():
         database = get_db(db)
-        with(cd(database['home'])):
-            ls_out = run('ls --format=single-column --sort=t *.lock')
-            msg = green('free') if 'cannot access' in ls_out else red('locked')
-            print blue('Lock:', bold = True), msg
+        dir_name = database['home']
+        with cd(database['home']):
+            ls = run('ls --format=single-column --sort=t -d -- */').split('\r\n')
+            pf = re.compile('^%s' % database['name'])
+            file_names = [f for f in ls if pf.search(f)]
+            if len(file_names) > 0:
+                dir_name = os.path.join(database['home'], file_names[0])
+        with cd(dir_name):
             print blue('Scheduled:', bold = True)
             # print run('tail -n 2 /var/spool/cron/atjobs/*')
             print sudo('atq')
@@ -106,8 +110,12 @@ def status(db):
                 ls = ls_out.split("\r\n")
                 logfile = ls[0]
                 tail = run('tail %s' % logfile)
+            print blue('Dir:', bold = True), green(dir_name, bold = True)
             print blue('Log:', bold = True), green(logfile, bold = True)
             print tail
+            ls_out = run('ls --format=single-column --sort=t *.lock')
+            msg = green('free') if 'cannot access' in ls_out else red('locked')
+            print blue('Lock:', bold = True), msg
             # print blue('List:', bold = True)
             # ls_out = run('ls --format=single-column --sort=t')
             # print ls_out
