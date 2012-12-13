@@ -19,18 +19,7 @@ package com.yahoo.ycsb.workloads;
 
 import java.util.Properties;
 import com.yahoo.ycsb.*;
-import com.yahoo.ycsb.generator.CounterGenerator;
-import com.yahoo.ycsb.generator.DiscreteGenerator;
-import com.yahoo.ycsb.generator.ExponentialGenerator;
-import com.yahoo.ycsb.generator.Generator;
-import com.yahoo.ycsb.generator.ConstantIntegerGenerator;
-import com.yahoo.ycsb.generator.HotspotIntegerGenerator;
-import com.yahoo.ycsb.generator.HistogramGenerator;
-import com.yahoo.ycsb.generator.IntegerGenerator;
-import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
-import com.yahoo.ycsb.generator.SkewedLatestGenerator;
-import com.yahoo.ycsb.generator.UniformIntegerGenerator;
-import com.yahoo.ycsb.generator.ZipfianGenerator;
+import com.yahoo.ycsb.generator.*;
 import com.yahoo.ycsb.measurements.Measurements;
 
 import java.io.IOException;
@@ -387,6 +376,9 @@ public class CoreWorkload extends Workload
 		{
 			keychooser=new UniformIntegerGenerator(0,recordcount-1);
 		}
+        else if (requestdistrib.compareTo("uniquerandom") == 0) {
+            keychooser = new UniqueRandomGenerator(recordcount);
+        }
 		else if (requestdistrib.compareTo("zipfian")==0)
 		{
 			//it does this by generating a random "next key" in part by taking the modulus over the number of keys
