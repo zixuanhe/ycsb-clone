@@ -185,6 +185,6 @@ def deploy():
     client1 = env.roledefs['client'][0]
     run('scp %s:ycsb.tar.gz .' % client1)
     with cd('/opt'):
-        run('rm -r ycsb-0.1.4')
+        run('rm -rf ycsb-0.1.4')
         run('tar xzvf ~/ycsb.tar.gz')
         
