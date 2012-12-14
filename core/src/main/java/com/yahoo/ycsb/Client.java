@@ -813,6 +813,7 @@ public class Client {
         final ExportMeasurementsThread exportmeasurementsthread = new ExportMeasurementsThread(threads, exporter, exportmeasurementsinterval);
         exportmeasurementsthread.start();
 
+        //add hook to export measurements on shutdown
         Thread hook = new Thread() {
             public void run() {
                 exportmeasurementsthread.exportOverall();
@@ -820,6 +821,7 @@ public class Client {
         };
         Runtime.getRuntime().addShutdownHook(hook);
 
+        //start client threads
         for (Thread t : threads) {
             t.start();
         }
