@@ -166,7 +166,13 @@ def get_log(db, regex='.*', do=False):
                     print blue('c%s unpacking ...' % cn)
                     local('tar -xvf %s -C %s' % (bz2_full_local, tempdir_local))
                     print blue('c%s moving to current dir ...' % cn)
-                    local('mv %s/%s ./%s-c%s' % (tempdir_local, f0, f0, cn))
+                    #local('mv %s/%s ./%s-c%s' % (tempdir_local, f0, f0, cn))
+                    local('mkdir -p ./%s-c%s' % (f0, cn))
+                    #print 'for f in $(ls %s/%s/*.out); do mv $f ./%s-c%s/$(basename $f)-c%s.out; done' % (tempdir_local, f0, f0, cn, cn)
+                    local('for f in $(ls %s/%s/*.out); do mv $f ./%s-c%s/$(basename $f)-c%s.out; done' %
+                          (tempdir_local, f0, f0, cn, cn))
+                    local('for f in $(ls %s/%s/*.err); do mv $f ./%s-c%s/$(basename $f)-c%s.err; done' %
+                          (tempdir_local, f0, f0, cn, cn))
                     local('rm -rf %s' % tempdir_local)
                 else:
                     tempdir_local = '%s/c%s' % (tempfile.gettempdir(), cn)
