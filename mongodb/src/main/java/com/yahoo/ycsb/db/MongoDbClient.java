@@ -183,8 +183,14 @@ public class MongoDbClient extends DB {
 	    for(String k: values.keySet()) {
 		r.put(k, values.get(k).toArray());
 	    }
-            WriteResult res = collection.insert(r,writeConcern);
-            return res.getError() == null ? 0 : 1;
+            WriteResult res = collection.insert(r, writeConcern);
+            String error = res.getError();
+            if (error == null) {
+                return 0;
+            } else {
+                System.err.println(error);
+                return 1;
+            }
         } catch (Exception e) {
             e.printStackTrace();
             return 1;
@@ -277,6 +283,10 @@ public class MongoDbClient extends DB {
             u.put("$set", fieldsToSet);
             WriteResult res = collection.update(q, u, false, false,
                     writeConcern);
+            String error = res.getError();
+            if (error != null) {
+                System.err.println(error);
+            }
             return res.getN() == 1 ? 0 : 1;
         } catch (Exception e) {
             System.err.println(e.toString());
