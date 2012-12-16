@@ -5,7 +5,7 @@ from fabric.colors import green, blue, red
 from fabric.contrib.console import confirm
 
 from conf import workloads
-from fabfile.helpers import get_db, get_workload, _at, get_outfilename, base_time, almost_nothing, get_properties
+from fabfile.helpers import get_db, get_workload, _at, get_outfilename, base_time, almost_nothing, get_properties, determine_file
 
 def _ycsbloadcmd(database, clientno, timestamp, target=None):
     totalclients = len(env.roledefs['client'])
@@ -89,12 +89,23 @@ def status(db):
         database = get_db(db)
         dir_name = database['home']
         with cd(database['home']):
-            ls = run('ls --format=single-column --sort=t -d -- */').split('\r\n')
-            pf = re.compile('^%s' % database['name'])
-            file_names = [f for f in ls if pf.search(f)]
-            if len(file_names) > 0:
-                dir_name = os.path.join(database['home'], file_names[0])
+            # we need to provide the info for the latest modified
+            # file, therefore we need to check the times
+            # recursively list all err files and modification times
+            lines = run('find . -name "*.err" -printf "%p %T@\n"').split('\r\n')
+            def extract(line):
+                (f, t) = line.split(' ')
+                (d, f) = os.path.split(f)
+                return (d, f, float(t))
+            def order(t):
+                return -t[2]
+            files = sorted(map(extract, lines), key = order)
+            (d, f, t) = files[0]
+            dir_name = os.path.normpath(os.path.join(database['home'], d))
         with cd(dir_name):
+            ls_out = run('ls --format=single-column --sort=t *.lock')
+            msg = green('free') if 'cannot access' in ls_out else red('locked')
+            print blue('Lock:', bold = True), msg
             print blue('Scheduled:', bold = True)
             # print run('tail -n 2 /var/spool/cron/atjobs/*')
             print sudo('atq')
@@ -113,9 +124,6 @@ def status(db):
             print blue('Dir:', bold = True), green(dir_name, bold = True)
             print blue('Log:', bold = True), green(logfile, bold = True)
             print tail
-            ls_out = run('ls --format=single-column --sort=t *.lock')
-            msg = green('free') if 'cannot access' in ls_out else red('locked')
-            print blue('Lock:', bold = True), msg
             # print blue('List:', bold = True)
             # ls_out = run('ls --format=single-column --sort=t')
             # print ls_out
@@ -130,28 +138,15 @@ def get_log(db, regex='.*', do=False):
     database = get_db(db)
     with almost_nothing():
         cn = _client_no() + 1
-        is_dir = False
         with cd(database['home']):
-            p = re.compile(regex)
-            ls = run('ls --format=single-column --sort=t *.err *.out').split("\r\n")
-            file_names = [f for f in ls if p.search(f)]
-            if len(file_names) > 0:
-                # the most recent file satisfying pattern
-                (f0, f1) = os.path.splitext(file_names[0]) # split to (path, ext)
-            else:
-                # list dirs only
-                ls = run('ls --format=single-column --sort=t -d -- */').split("\r\n")
-                dir_names = [f.strip('/') for f in ls if p.search(f)]
-                f0 = dir_names[0]
-                is_dir = True
-            # now we have the map {'host' -> 'xxx'}
-            # perform self-check and maybe continue
+            (f0, is_dir) = determine_file(regex)
             print blue('Filename at c%s: ' % cn, bold = True), green(f0, bold = True)
         # now do the processing, if enabled
         if do:
             with cd(database['home']):
                 if is_dir:
                     tempdir_local = '%s/c%s' % (tempfile.gettempdir(), cn)
+                    dir_local = './%s-c%s' % (f0, cn)
                     bz2_remote = '%s-c%s-dir.bz2' % (f0, cn)
                     bz2_full_local = '%s/%s-dir.bz2' % (tempdir_local, f0)
                     # packing
@@ -166,13 +161,19 @@ def get_log(db, regex='.*', do=False):
                     print blue('c%s unpacking ...' % cn)
                     local('tar -xvf %s -C %s' % (bz2_full_local, tempdir_local))
                     print blue('c%s moving to current dir ...' % cn)
-                    #local('mv %s/%s ./%s-c%s' % (tempdir_local, f0, f0, cn))
+                    # remove the old version of the dir
+                    # TODO maybe use versioning?
+                    local('rm -rf %s' % (dir_local))
                     local('mkdir -p ./%s-c%s' % (f0, cn))
-                    #print 'for f in $(ls %s/%s/*.out); do mv $f ./%s-c%s/$(basename $f)-c%s.out; done' % (tempdir_local, f0, f0, cn, cn)
-                    local('for f in $(ls %s/%s/*.out); do mv $f ./%s-c%s/$(basename $f)-c%s.out; done' %
-                          (tempdir_local, f0, f0, cn, cn))
-                    local('for f in $(ls %s/%s/*.err); do mv $f ./%s-c%s/$(basename $f)-c%s.err; done' %
-                          (tempdir_local, f0, f0, cn, cn))
+                    local('mv %s/%s %s' % (tempdir_local, f0, dir_local))
+                    # additional step - rename all the files
+                    # *.err and *.out in the folder
+                    rename_cmd = 'for i in ./%s-c%s/*.*; do ' \
+                                 ' ext="${i##*.}"      ; '    \
+                                 ' fil="${i%%.*}-c%s"  ; '    \
+                                 ' mv "$i" "$fil.$ext" ; '    \
+                                 'done' % (f0, cn, cn)
+                    local(rename_cmd)
                     local('rm -rf %s' % tempdir_local)
                 else:
                     tempdir_local = '%s/c%s' % (tempfile.gettempdir(), cn)
