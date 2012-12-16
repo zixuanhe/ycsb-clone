@@ -163,16 +163,16 @@ def get_log(db, regex='.*', do=False):
                     print blue('c%s moving to current dir ...' % cn)
                     # remove the old version of the dir
                     # TODO maybe use versioning?
-                    local('rm -rf %s' % (dir_local))
-                    local('mkdir -p ./%s-c%s' % (f0, cn))
+                    local('rm -rf %s' % dir_local)
+                    local('mkdir -p %s' % dir_local)
                     local('mv %s/%s %s' % (tempdir_local, f0, dir_local))
                     # additional step - rename all the files
                     # *.err and *.out in the folder
-                    rename_cmd = 'for i in ./%s-c%s/*.*; do ' \
-                                 ' ext="${i##*.}"      ; '    \
-                                 ' fil="${i%%.*}-c%s"  ; '    \
-                                 ' mv "$i" "$fil.$ext" ; '    \
-                                 'done' % (f0, cn, cn)
+                    rename_cmd = 'for i in ./%s/*.*; do  ' \
+                                 ' ext="${i##*.}"      ; ' \
+                                 ' fil="${i%%.*}-c%s"  ; ' \
+                                 ' mv "$i" "$fil.$ext" ; ' \
+                                 'done' % (dir_local, cn)
                     local(rename_cmd)
                     local('rm -rf %s' % tempdir_local)
                 else:
