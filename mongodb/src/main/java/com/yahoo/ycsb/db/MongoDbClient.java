@@ -180,9 +180,9 @@ public class MongoDbClient extends DB {
 
             DBCollection collection = db.getCollection(table);
             DBObject r = new BasicDBObject().append("_id", key);
-	    for(String k: values.keySet()) {
-		r.put(k, values.get(k).toArray());
-	    }
+	        for(String k: values.keySet()) {
+		        r.put(k, values.get(k).toArray());
+	        }
             WriteResult res = collection.insert(r, writeConcern);
             String error = res.getError();
             if (error == null) {
