@@ -1,24 +1,24 @@
-# Ugly hack to allow absolute import from the root folder
 import sys, os
-sys.path.insert(0, os.path.abspath('..'))
-# The end of the ugly hack
+sys.path.insert(0, os.path.abspath('..')) # hack
 
-from datetime import timedelta
-import re
 from fabric import tasks
-from fabric.context_managers import cd
 from fabric.network import disconnect_all
+from fabric.operations import run, put
+from conf import hosts
+from conf import workloads
+from fabfile.helpers import almost_nothing
+from datetime import timedelta
+from re import search, compile
+from fabric.context_managers import cd
 from fabric.operations import run, put, sudo
-import pytz
-from conf import workloads, hosts
+from pytz import timezone
 from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing, get_outfilename, get_properties
 
-class RunParams():
-    def __init__(self, db_name, home_path, wl_name):
-        self.db_name = db_name
-        self.wl_name = wl_name
-        self.home_path = home_path
-
+# remote citrusleaf machines
+tz = hosts.timezone
+clients = hosts.env.roledefs['client']
+# benchmark file name, it bothers the CPU and consumes time and energy
+benchmark_script = 'execute.sh'
 
 LOCAL = False
 #LOCAL = True
@@ -26,18 +26,53 @@ if LOCAL:
     # local virtual machines
     hosts.env.user = 'vagrant'
     hosts.env.password = 'vagrant'
-    timezone = pytz.timezone('CET')
-    # clients = ['192.168.0.11', '192.168.0.12', '192.168.0.13', '192.168.0.14']
-    clients = ['192.168.8.108', '192.168.9.213', '192.168.8.41', '192.168.8.118']
-else:
-    # remote citrusleaf machines
-    timezone = hosts.timezone
-    clients = hosts.env.roledefs['client']
-
+    tz = timezone('CET')
+    clients = ['192.168.0.11', '192.168.0.12', '192.168.0.13', '192.168.0.14']
+#    clients = ['192.168.8.108', '192.168.9.213', '192.168.8.41', '192.168.8.118']
 #clients = [clients[0]]
 
-# benchmark file name, it bothers the CPU and consumes time and energy
-benchmark_script = 'execute.sh'
+def fo_base_time():
+    base_time(tz = tz)
+
+class AnAction:
+    """ It is something to execute on the remote servers"""
+    def __init__(self, hosts = clients, **kv):
+        # remote hosts to be executed on
+        self.hosts = clients
+        # action to be executed
+        self.action = kv['action'] or RemoteActionIdle(10)
+        # remote hosts timezone
+        self.timezone = kv['timezone'] or tz
+        # delay AFTER submission
+        self.delay = self.action.delay()
+
+class RemoteAction:
+    def delay_after(self):
+        pass
+
+class RemoteRun(RemoteAction):
+    def __init__(self, db, wl, target = None):
+        self.db = db
+        self.wl = wl
+        self.target = target
+    def delay_after(self):
+        """ Returns estimated delay (run time) for the test with parameter t.
+        In seconds """
+        opc = workloads.data['operationcount']
+        # redefine operation count if the workload hath
+        workload = get_workload(self.wl)
+        if 'properties' in workload:
+            if 'operationcount' in workload['properties']:
+                opc = long(workload['properties']['operationcount'])
+        t = opc if self.target is None else self.target
+        d = int((opc / t) * 1.1)
+        return timedelta(seconds = d)
+
+class RemoteIdle(RemoteAction):
+    def __init__(self, d):
+        self.d = d
+    def delay_after(self):
+        return timedelta(seconds = self.d)
 
 def prepare_ycsbruncmd(the_hosts, dir_name, database, workload, the_time, target):
     # /opt/ycsb/bin/ycsb run couchbase ... -target 25000
@@ -58,7 +93,7 @@ def prepare_ycsbruncmd(the_hosts, dir_name, database, workload, the_time, target
             par += ' -p %s=%s' % (key, value)
     if target is not None:
         par += ' -target %s' % str(target)
-    # parameters are constructed
+        # parameters are constructed
     outfile = get_outfilename(database['name'], workload['name'], 'out', the_time, target)
     errfile = get_outfilename(database['name'], workload['name'], 'err', the_time, target)
     cmd = './%s %s' % (benchmark_script, par)
@@ -72,8 +107,8 @@ def initialize(the_hosts, db):
     """
     database = get_db(db)
     db_home = database['home']
-    pf = re.compile('^%s' % database['name'])
-    pn = re.compile('(\d+)/$')
+    pf = compile('^%s' % database['name'])
+    pn = compile('(\d+)/$')
     nos = [0]
     def inner_initialize_0():
     #    sudo('yum -y install at')
@@ -94,10 +129,10 @@ def initialize(the_hosts, db):
                 mn = pn.search(file_name)
                 if mn:
                     nos.append(int(mn.group(1)) + 1)
-    # find the maximum number for all of the hosts
+        # find the maximum number for all of the hosts
     with almost_nothing():
         tasks.execute(inner_initialize_0, hosts=the_hosts)
-    # now form the dir name
+        # now form the dir name
     dir_name = os.path.join(database['home'], '%s_%02d' % (database['name'], max(nos)))
     def inner_initialize_1():
         run('mkdir %s ' % dir_name)
@@ -107,7 +142,7 @@ def initialize(the_hosts, db):
             with cd(dir_name):
                 run('rm -rf ./*')
                 put(local_benchmark_script, benchmark_script, mode=0744)
-#                run('sed -i "s/\/opt\/ycsb\/bin\/ycsb \$\*/python nbody.py \$\*/g" %s' % benchmark_script)
+            #                run('sed -i "s/\/opt\/ycsb\/bin\/ycsb \$\*/python nbody.py \$\*/g" %s' % benchmark_script)
         else:
             # if not LOCAL
             with cd(dir_name):
@@ -119,7 +154,7 @@ def initialize(the_hosts, db):
             tasks = run('atq').split('\r\n')
             tid = []
             for task in tasks:
-                m = re.search('^(\d+)\t', task)
+                m = search('^(\d+)\t', task)
                 if m:
                     tid.append(m.group(1))
             run('atrm %s' % ' '.join(tid))
@@ -161,7 +196,7 @@ def delay(wl, t):
 def run_test_series(db, seq):
     """ This script takes a sequence of threshold values and executes tests """
     dir_name = initialize(clients, db)
-    the_time = base_time(tz = timezone)
+    the_time = base_time(tz = tz)
     for (wl, t) in seq:
         t = t if t > 0 else None
         # submit the task
@@ -171,6 +206,79 @@ def run_test_series(db, seq):
             the_time += timedelta(minutes = 1)
         else:
             the_time += delay(wl, t)
-            the_time = base_time(the_time, tz = timezone) # round the time up
-    # end of all
+            the_time = base_time(the_time, tz = tz) # round the time up
+        # end of all
     disconnect_all()
+
+
+def init(*srv):
+    def inner_init():
+        put('at_test.sh', 'at_test.sh', mode=0755)
+    with almost_nothing():
+        tasks.execute(inner_init, hosts=map(lambda x: x.ip, srv))
+
+def finit():
+    disconnect_all()
+
+def ip(s):
+    return s.ip
+
+def global_start(*srv):
+    def inner():
+        run('echo start')
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
+def global_stop(*srv):
+    def inner():
+        run('echo stop')
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
+def global_latency(delay, *srv):
+    def inner():
+        run('echo latency %s' % delay)
+    with almost_nothing():
+        tasks.execute(inner, delay, hosts=map(ip, list(srv)))
+def global_block(*srv):
+    def inner():
+        run('echo start')
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
+def global_unblock(*srv):
+    def inner():
+        run('echo unblock')
+    with almost_nothing():
+        tasks.execute(inner, hosts=map(ip, list(srv)))
+
+class Server:
+    def __init__(self, ip):
+        self.ip = ip
+    def start(self):
+        global_start(self)
+    def stop(self):
+        global_stop(self)
+    def latency(self, delay):
+        global_latency(delay, self)
+    def block(self):
+        global_block(self)
+    def unblock(self):
+        global_unblock(self)
+
+#t0 = datetime(2012,11,28,2,22,29,1234)
+#t1 = datetime(2012,11,28,2,22,31,1234)
+#print base_time(t0)
+#print base_time(t1)
+(s1,s2,s3,s4) = map(Server, hosts.env.roledefs['client'])
+
+init(s1, s2, s3, s4)
+
+#_begin(s1, s2)
+
+s1.start()
+s2.start()
+s1.latency(1000)
+s1.latency(0)
+s1.stop()
+s2.stop()
+
+finit()
+

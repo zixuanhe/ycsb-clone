@@ -1,9 +1,6 @@
 #!/usr/bin/python
-
-# Ugly hack to allow absolute import from the root folder
 import sys, os
-sys.path.insert(0, os.path.abspath('..'))
-# The end of the ugly hack
+sys.path.insert(0, os.path.abspath('..')) # Ugly hack to allow import from the root folder
 from fabfile.series import run_test_series
 
 db = 'basic'       # hardcoded
