@@ -41,6 +41,11 @@ public class DBWrapper extends DB {
     private int insertRetryCount;
     private int retryDelay;
 
+    interface DBOperation {
+        String name();
+        int count();
+        int go();
+    }
 
     public DBWrapper(DB db, Properties p) {
         _db = db;
@@ -235,10 +240,3 @@ public class DBWrapper extends DB {
         return res;
     }
 }
-
-interface DBOperation {
-    String name();
-    int count();
-    int go();
-}
-

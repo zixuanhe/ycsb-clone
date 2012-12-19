@@ -48,6 +48,7 @@ import java.util.Vector;
  * <LI><b>maxscanlength</b>: for scans, what is the maximum number of records to scan (default: 1000)
  * <LI><b>scanlengthdistribution</b>: for scans, what distribution should be used to choose the number of records to scan, for each scan, between 1 and maxscanlength (default: uniform)
  * <LI><b>insertorder</b>: should records be inserted in order by key ("ordered"), or in hashed order ("hashed") (default: hashed)
+ * <LI><b>ignoreinserterrors</b>: if set to true the insert operations are continues ever when one of the operations failed (default: false)
  * </ul>
  */
 public class CoreWorkload extends Workload {
@@ -257,6 +258,16 @@ public class CoreWorkload extends Workload {
      */
     public static final String FIELD_NAME_PREFIX_DEFAULT = "field";
 
+    /**
+     * Ignore insert errors.
+     */
+    public static final String IGNORE_INSERT_ERRORS = "ignoreinserterrors";
+
+    /**
+     * Default value of the ignore insert errors.
+     */
+    public static final String IGNORE_INSERT_ERRORS_DEFAULT = "false";
+
 
     IntegerGenerator keysequence;
 
@@ -276,6 +287,8 @@ public class CoreWorkload extends Workload {
 
     String fieldnameprefix;
 
+    boolean ignoreinserterrors;
+    
     protected static IntegerGenerator getFieldLengthGenerator(Properties p) throws WorkloadException {
         IntegerGenerator fieldlengthgenerator;
         String fieldlengthdistribution = p.getProperty(FIELD_LENGTH_DISTRIBUTION_PROPERTY, FIELD_LENGTH_DISTRIBUTION_PROPERTY_DEFAULT);
@@ -311,6 +324,8 @@ public class CoreWorkload extends Workload {
 
         fieldnameprefix = p.getProperty(FIELD_NAME_PREFIX, FIELD_NAME_PREFIX_DEFAULT);
 
+        ignoreinserterrors = Boolean.parseBoolean(p.getProperty(IGNORE_INSERT_ERRORS, IGNORE_INSERT_ERRORS_DEFAULT));
+        
         double readproportion = Double.parseDouble(p.getProperty(READ_PROPORTION_PROPERTY, READ_PROPORTION_PROPERTY_DEFAULT));
         double updateproportion = Double.parseDouble(p.getProperty(UPDATE_PROPORTION_PROPERTY, UPDATE_PROPORTION_PROPERTY_DEFAULT));
         double insertproportion = Double.parseDouble(p.getProperty(INSERT_PROPORTION_PROPERTY, INSERT_PROPORTION_PROPERTY_DEFAULT));
@@ -431,7 +446,11 @@ public class CoreWorkload extends Workload {
     public boolean doInsert(DB db, Object threadstate) {
         String dbkey = buildKeyName(keysequence.nextInt());
         HashMap<String, ByteIterator> values = buildValues();
-        if (db.insert(table, dbkey, values) == 0) {
+        int result = db.insert(table, dbkey, values);
+        if (ignoreinserterrors) {
+            return true;
+        }
+        if (result == 0) {
             return true;
         } else {
             return false;

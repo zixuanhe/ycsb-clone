@@ -1,5 +1,8 @@
 from datetime import datetime, timedelta
+import os
+import re
 from fabric.context_managers import settings, hide
+from fabric.operations import run
 from conf import hosts, databases, workloads
 
 def base_time(time=None, round_sec=60, tz = hosts.timezone):
@@ -50,3 +53,21 @@ def get_properties(database, workload=None):
 
 def _at(cmd, time=base_time()):
     return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))
+
+
+def determine_file(regex):
+    is_dir = False
+    p = re.compile(regex)
+    ls = run('ls --format=single-column --sort=t *.err *.out').split("\r\n")
+    file_names = [f for f in ls if p.search(f)]
+    if len(file_names) > 0:
+        # the most recent file satisfying pattern
+        (f0, f1) = os.path.splitext(file_names[0]) # split to (path, ext)
+        return f0, is_dir
+    else:
+        # list dirs only
+        ls = run('ls --format=single-column --sort=t -d -- */').split("\r\n")
+        dir_names = [f.strip('/') for f in ls if p.search(f)]
+        f0 = dir_names[0]
+        is_dir = True
+        return f0, is_dir
