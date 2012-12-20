@@ -3,12 +3,12 @@ import sys, os
 sys.path.insert(0, os.path.abspath('..'))
 # The end of the ugly hack
 
-from datetime import timedelta
 import re
 from fabric import tasks
 from fabric.context_managers import cd
 from fabric.network import disconnect_all
 from fabric.operations import run, put, sudo
+from datetime import timedelta
 import pytz
 from conf import workloads, hosts
 from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing, get_outfilename, get_properties

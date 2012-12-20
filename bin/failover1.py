@@ -1,35 +1,27 @@
 #!/usr/bin/python
 import sys, os
 sys.path.insert(0, os.path.abspath('..')) # ugly hack to allow import from the root
-from fabfile.failover import run_test_series, clients, RemoteRun, RemoteIdle
-from fabfile.helpers import base_time
+from fabfile.failover import clients, servers, AT, Launcher
 
-class Seq:
-    def __init__(self, host):
-        self.host = host
-        self.seq = []
-        self.t = base_time()
-    def append(self, e):
-        self.seq.append(e)
-        self.t += e.delay_after()
-        return self
+
+#########################
+c1, c2, c3, c4 = clients
+#e1, e2, e3, e4 = servers
+e1 = servers
 
 db = 'basic'
 wl = 'C'
-def run(target):
-    return RemoteRun(db, wl, target * 1000)
-def idle(prev):
-    return RemoteIdle(prev.delay_after())
 
-server1 = Seq(clients[0])
-server1.append(run(10))
-#server1.append(idle(???))
+at = AT(clients, db)
 
+# run clients bombarding the servers with requests
+t0 = at[0].client_run([c1, c2], db, wl)
+# in 1 minute (=60 sec) the first server fails
+at[60].server_kill([e1])
+# in 2 minutes the server is up back
+at[120].server_start([e1])
 
+# test again, to verify if the previous failure influenced behavior
+t1 = at[t0].client_run([c1, c2], db, wl)
 
-
-class RunParams():
-    def __init__(self, db_name, home_path, wl_name):
-        self.db_name = db_name
-        self.wl_name = wl_name
-        self.home_path = home_path
+at.fire()

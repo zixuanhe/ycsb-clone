@@ -1,12 +1,11 @@
 import sys, os
 sys.path.insert(0, os.path.abspath('..')) # hack
-
 from fabric import tasks
 from fabric.network import disconnect_all
 from fabric.operations import run, put
 from conf import hosts
 from conf import workloads
-from fabfile.helpers import almost_nothing
+from fabfile.helpers import almost_nothing, base_time
 from datetime import timedelta
 from re import search, compile
 from fabric.context_managers import cd
@@ -17,6 +16,7 @@ from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing
 # remote citrusleaf machines
 tz = hosts.timezone
 clients = hosts.env.roledefs['client']
+servers = hosts.env.roledefs['server']
 # benchmark file name, it bothers the CPU and consumes time and energy
 benchmark_script = 'execute.sh'
 
@@ -28,51 +28,9 @@ if LOCAL:
     hosts.env.password = 'vagrant'
     tz = timezone('CET')
     clients = ['192.168.0.11', '192.168.0.12', '192.168.0.13', '192.168.0.14']
+    servers = ['192.168.0.10']
 #    clients = ['192.168.8.108', '192.168.9.213', '192.168.8.41', '192.168.8.118']
 #clients = [clients[0]]
-
-def fo_base_time():
-    base_time(tz = tz)
-
-class AnAction:
-    """ It is something to execute on the remote servers"""
-    def __init__(self, hosts = clients, **kv):
-        # remote hosts to be executed on
-        self.hosts = clients
-        # action to be executed
-        self.action = kv['action'] or RemoteActionIdle(10)
-        # remote hosts timezone
-        self.timezone = kv['timezone'] or tz
-        # delay AFTER submission
-        self.delay = self.action.delay()
-
-class RemoteAction:
-    def delay_after(self):
-        pass
-
-class RemoteRun(RemoteAction):
-    def __init__(self, db, wl, target = None):
-        self.db = db
-        self.wl = wl
-        self.target = target
-    def delay_after(self):
-        """ Returns estimated delay (run time) for the test with parameter t.
-        In seconds """
-        opc = workloads.data['operationcount']
-        # redefine operation count if the workload hath
-        workload = get_workload(self.wl)
-        if 'properties' in workload:
-            if 'operationcount' in workload['properties']:
-                opc = long(workload['properties']['operationcount'])
-        t = opc if self.target is None else self.target
-        d = int((opc / t) * 1.1)
-        return timedelta(seconds = d)
-
-class RemoteIdle(RemoteAction):
-    def __init__(self, d):
-        self.d = d
-    def delay_after(self):
-        return timedelta(seconds = self.d)
 
 def prepare_ycsbruncmd(the_hosts, dir_name, database, workload, the_time, target):
     # /opt/ycsb/bin/ycsb run couchbase ... -target 25000
@@ -211,74 +169,78 @@ def run_test_series(db, seq):
     disconnect_all()
 
 
-def init(*srv):
-    def inner_init():
-        put('at_test.sh', 'at_test.sh', mode=0755)
-    with almost_nothing():
-        tasks.execute(inner_init, hosts=map(lambda x: x.ip, srv))
+class RemoteAction:
+    def __init__(self, hosts):
+        # remote hosts to be executed on
+        self.hosts = hosts
+    def delay_after(self):
+        pass
 
-def finit():
-    disconnect_all()
+class RemoteInit(RemoteAction):
+    def __init__(self, hosts, db):
+        RemoteAction.__init__(self, hosts)
 
-def ip(s):
-    return s.ip
+    def delay_after(self):
+        return 0
 
-def global_start(*srv):
-    def inner():
-        run('echo start')
-    with almost_nothing():
-        tasks.execute(inner, hosts=map(ip, list(srv)))
-def global_stop(*srv):
-    def inner():
-        run('echo stop')
-    with almost_nothing():
-        tasks.execute(inner, hosts=map(ip, list(srv)))
-def global_latency(delay, *srv):
-    def inner():
-        run('echo latency %s' % delay)
-    with almost_nothing():
-        tasks.execute(inner, delay, hosts=map(ip, list(srv)))
-def global_block(*srv):
-    def inner():
-        run('echo start')
-    with almost_nothing():
-        tasks.execute(inner, hosts=map(ip, list(srv)))
-def global_unblock(*srv):
-    def inner():
-        run('echo unblock')
-    with almost_nothing():
-        tasks.execute(inner, hosts=map(ip, list(srv)))
+class RemoteRun(RemoteAction):
+    def __init__(self, hosts, db, wl, thr=None):
+        RemoteAction.__init__(self, hosts)
+        self.db = db
+        self.wl = wl
+        self.thr = thr
+    def delay_after(self):
+        """ Returns estimated delay (run time) for the test with parameter t.
+        In seconds """
+        opc = workloads.data['operationcount']
+        # redefine operation count if the workload hath
+        workload = get_workload(self.wl)
+        if 'properties' in workload:
+            if 'operationcount' in workload['properties']:
+                opc = long(workload['properties']['operationcount'])
+        t = opc if self.thr is None else self.thr
+        d = int((opc / t) * 1.1)
+        return timedelta(seconds = d)
 
-class Server:
-    def __init__(self, ip):
-        self.ip = ip
-    def start(self):
-        global_start(self)
-    def stop(self):
-        global_stop(self)
-    def latency(self, delay):
-        global_latency(delay, self)
-    def block(self):
-        global_block(self)
-    def unblock(self):
-        global_unblock(self)
 
-#t0 = datetime(2012,11,28,2,22,29,1234)
-#t1 = datetime(2012,11,28,2,22,31,1234)
-#print base_time(t0)
-#print base_time(t1)
-(s1,s2,s3,s4) = map(Server, hosts.env.roledefs['client'])
 
-init(s1, s2, s3, s4)
+class Launcher:
+    def __init__(self, the_seq, the_time):
+        self.the_seq = the_seq
+        self.the_time = the_time
 
-#_begin(s1, s2)
+    def client_run(self, hosts, db, wl, thr = None):
+        at.seq.append(RemoteRun(hosts, db, wl, thr))
+        return self.the_time
 
-s1.start()
-s2.start()
-s1.latency(1000)
-s1.latency(0)
-s1.stop()
-s2.stop()
+    def server_kill(self, hosts):
+        return self.the_time
 
-finit()
+    def server_start(self, hosts):
+        return self.the_time
+
+
+class AT:
+    def __init__(self, the_hosts, the_db, the_tz = hosts.timezone):
+        self.the_base_time = base_time(tz = the_tz)
+        self.dir_name = initialize(the_hosts, the_db)
+        self.the_seq = []
+
+    def __getitem__(self, item):
+        return Launcher(self.the_seq, self.the_base_time + timedelta(seconds = item))
+
+    def fire(self):
+        # self.the_seq is the sequence of remote actions
+        for action in self.the_seq:
+            t = t if t > 0 else None
+            # submit the task
+            submit_workload(clients, self.dir_name, db, wl, the_time, t)
+            print "submitted %s on %s with threshold = %s" % (the_time, t)
+            if LOCAL:
+                the_time += timedelta(minutes = 1)
+            else:
+                the_time += delay(wl, t)
+                the_time = base_time(the_time, tz = tz) # round the time up
+                # end of all
+        disconnect_all()
 
