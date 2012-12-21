@@ -165,7 +165,7 @@ def get_log(db, regex='.*', do=False):
                     # TODO maybe use versioning?
                     local('rm -rf %s' % dir_local)
                     local('mkdir -p %s' % dir_local)
-                    local('mv %s/%s %s' % (tempdir_local, f0, dir_local))
+                    local('mv %s/%s/* %s' % (tempdir_local, f0, dir_local))
                     # additional step - rename all the files
                     # *.err and *.out in the folder
                     rename_cmd = 'for i in ./%s/*.*; do  ' \
