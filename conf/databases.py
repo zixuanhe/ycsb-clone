@@ -33,6 +33,21 @@ databases = {
         }
     },
 
+    'couchbase2' : {
+        'name': 'couchbase',
+        'home': '/run/shm',
+        'command': 'couchbase2',
+        'properties': {
+            'couchbase.hosts': 'e1.citrusleaf.local,e2.citrusleaf.local,e3.citrusleaf.local,e4.citrusleaf.local',
+            'couchbase.bucket': 'test',
+            'couchbase.user': '',
+            'couchbase.password': '',
+            'couchbase.opTimeout': 60000,
+            #'couchbase.failureMode': 'Retry',
+            'couchbase.checkOperationStatus': 'true',
+            }
+    },
+
     'cassandra' : {
         'name': 'cassandra',
         'home': '/run/shm',

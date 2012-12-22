@@ -1,8 +1,8 @@
 root = '/opt/ycsb'  #root of YCSB installation
 
 data = {    #global YSCB properties
-    'recordcount': 500000000,  #SSD
-    #'recordcount': 50000000,    #RAM
+    #'recordcount': 500000000,  #SSD
+    'recordcount': 50000000,    #RAM
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
