@@ -40,6 +40,8 @@ databases = {
         'properties': {
             'couchbase.hosts': 'e1.citrusleaf.local,e2.citrusleaf.local,e3.citrusleaf.local,e4.citrusleaf.local',
             'couchbase.bucket': 'test',
+            'couchbase.ddocs': '',
+            'couchbase.views': '',
             'couchbase.user': '',
             'couchbase.password': '',
             'couchbase.opTimeout': 60000,
