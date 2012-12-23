@@ -68,6 +68,8 @@ def initialize(the_hosts, db):
     pf = compile('^%s' % database['name'])
     pn = compile('(\d+)/$')
     nos = [0]
+    return os.path.join(database['home'], database['name'] + "_00")
+
     def inner_initialize_0():
     #    sudo('yum -y install at')
     #    sudo('service atd start')
@@ -169,25 +171,28 @@ def run_test_series(db, seq):
     disconnect_all()
 
 
-class RemoteAction:
-    def __init__(self, hosts):
+class RemoteBase:
+    def __init__(self, hosts, time, tz):
         # remote hosts to be executed on
         self.hosts = hosts
+        self.time = time
+        self.tz = tz
     def delay_after(self):
-        pass
+        return self.time
+    def call(self):
+        print "called %s at %s for %s" % (self, self.time, self.hosts)
 
-class RemoteInit(RemoteAction):
-    def __init__(self, hosts, db):
-        RemoteAction.__init__(self, hosts)
+class RemoteInit(RemoteBase):
+    def __init__(self, db, *base):
+        RemoteBase.__init__(self, *base)
 
-    def delay_after(self):
-        return 0
 
-class RemoteRun(RemoteAction):
-    def __init__(self, hosts, db, wl, thr=None):
-        RemoteAction.__init__(self, hosts)
+class RemoteRun(RemoteBase):
+    def __init__(self, db, wl, dir_path, thr, *base):
+        RemoteBase.__init__(self, *base)
         self.db = db
         self.wl = wl
+        self.dir_path = dir_path
         self.thr = thr
     def delay_after(self):
         """ Returns estimated delay (run time) for the test with parameter t.
@@ -200,47 +205,100 @@ class RemoteRun(RemoteAction):
                 opc = long(workload['properties']['operationcount'])
         t = opc if self.thr is None else self.thr
         d = int((opc / t) * 1.1)
-        return timedelta(seconds = d)
+        the_time = self.time + timedelta(seconds = d)
+        the_time = base_time(the_time, tz = self.tz) # round the time up
+        return the_time - self.time
+
+    def call(self):
+#        submit_workload(clients, self.dir_path, self.db, self.wl, self.time, self.thr)
+        print "at %s submitted run with threshold = %s (%s)" % (self.time, self.thr, self.hosts)
 
 
+class RemoteKill(RemoteBase):
+    def __init__(self, db, *base):
+        RemoteBase.__init__(self, *base)
+        self.db = db
+    def call(self):
+        print "at %s submitted server kill (%s)" % (self.time, self.hosts)
+
+class RemoteStart(RemoteBase):
+    def __init__(self, db, *base):
+        RemoteBase.__init__(self, *base)
+        self.db = db
+    def call(self):
+        print "at %s submitted server start (%s)" % (self.time, self.hosts)
+
+class RemoteNetworkUp(RemoteBase):
+    def __init__(self, *base):
+        RemoteBase.__init__(self, *base)
+    def call(self):
+        print "at %s submitted network up (%s)" % (self.time, self.hosts)
+
+class RemoteNetworkDown(RemoteBase):
+    def __init__(self, *base):
+        RemoteBase.__init__(self, *base)
+    def call(self):
+        print "at %s submitted network down (%s)" % (self.time, self.hosts)
+
+
+class Network:
+    UP = 1
+    DOWN = 2
 
 class Launcher:
-    def __init__(self, the_seq, the_time):
-        self.the_seq = the_seq
-        self.the_time = the_time
+    def __init__(self, at, delta):
+        self.at = at
+        self.delta = delta
+
+    def _common(self, ctor, hosts, *args):
+        delta = self.at.base_time + self.delta
+        tz = self.at.tz
+        ext_args = list(args) + [hosts, delta, tz]
+        step = ctor(*ext_args)
+        self.at.seq.append(step)
+        return self.delta + step.delay_after()
 
     def client_run(self, hosts, db, wl, thr = None):
-        at.seq.append(RemoteRun(hosts, db, wl, thr))
-        return self.the_time
+        dn = self.at.dir_name
+        return self._common(RemoteRun, hosts, db, wl, dn, thr)
 
-    def server_kill(self, hosts):
-        return self.the_time
+    def server_kill(self, hosts, db):
+        return self._common(RemoteKill, hosts, db)
 
-    def server_start(self, hosts):
-        return self.the_time
+    def server_start(self, hosts, db):
+        return self._common(RemoteStart, hosts, db)
+
+    def server_network(self, hosts, network_flag):
+        if network_flag == Network.UP:
+            nw_ctor = RemoteNetworkUp
+        else:
+            nw_ctor = RemoteNetworkDown
+        return self._common(nw_ctor, hosts)
+
 
 
 class AT:
     def __init__(self, the_hosts, the_db, the_tz = hosts.timezone):
-        self.the_base_time = base_time(tz = the_tz)
+        self.base_time = base_time(tz = the_tz)
         self.dir_name = initialize(the_hosts, the_db)
-        self.the_seq = []
+        self.tz = the_tz
+        self.seq = []
 
-    def __getitem__(self, item):
-        return Launcher(self.the_seq, self.the_base_time + timedelta(seconds = item))
+    def __getitem__(self, delta):
+        """
+        :type delta: timedelta
+        delta is the time span since self is constructed
+        """
+        if type(delta) == int:
+            delta = timedelta(seconds = delta)
+        return Launcher(self, delta)
 
     def fire(self):
         # self.the_seq is the sequence of remote actions
-        for action in self.the_seq:
-            t = t if t > 0 else None
-            # submit the task
-            submit_workload(clients, self.dir_name, db, wl, the_time, t)
-            print "submitted %s on %s with threshold = %s" % (the_time, t)
-            if LOCAL:
-                the_time += timedelta(minutes = 1)
-            else:
-                the_time += delay(wl, t)
-                the_time = base_time(the_time, tz = tz) # round the time up
-                # end of all
+        # ra is abbreviation of RemoteBase
+        for rb in self.seq:
+            if isinstance(rb, RemoteBase):
+                rb.call()
+        # end of all
         disconnect_all()
 
