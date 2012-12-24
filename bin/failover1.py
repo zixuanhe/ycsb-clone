@@ -9,13 +9,13 @@ from fabfile.failover import clients, servers, AT, Launcher, Network
 
 #########################
 c1, c2, c3, c4 = clients
-#e1, e2, e3, e4 = servers
-e1 = '192.168.0.10'
-
+e1, e2, e3, e4 = servers
+#e1 = '192.168.0.10'
+#tz = pytz.timezone('Asia/Omsk')
 db = 'basic'
 wl = 'C'
 
-at = AT(clients, db, pytz.timezone('Asia/Omsk'))
+at = AT(clients, db)
 one_min = timedelta(minutes = 1)
 # run clients bombarding the servers with requests
 t0 = at[0].client_run([c1, c2], db, wl) + one_min

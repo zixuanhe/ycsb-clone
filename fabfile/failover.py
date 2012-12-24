@@ -20,16 +20,18 @@ servers = hosts.env.roledefs['server']
 # benchmark file name, it bothers the CPU and consumes time and energy
 benchmark_script = 'execute.sh'
 
-LOCAL = False
-#LOCAL = True
+# use LOCAL=True for testing on the local virtual machines
+LOCAL = True
 if LOCAL:
     # local virtual machines
     hosts.env.user = 'vagrant'
     hosts.env.password = 'vagrant'
     tz = timezone('CET')
-    clients = ['192.168.0.11', '192.168.0.12', '192.168.0.13', '192.168.0.14']
-    servers = ['192.168.0.10']
-#    clients = ['192.168.8.108', '192.168.9.213', '192.168.8.41', '192.168.8.118']
+#    clients = ['192.168.0.11', '192.168.0.12', '192.168.0.13', '192.168.0.14']
+#    servers = ['192.168.0.10']
+    clients = ['192.168.8.108', '192.168.9.213', '192.168.8.41', '192.168.8.118']
+    servers = ['192.168.8.229']
+
 #clients = [clients[0]]
 
 def prepare_ycsbruncmd(the_hosts, dir_name, database, workload, the_time, target):
@@ -59,6 +61,12 @@ def prepare_ycsbruncmd(the_hosts, dir_name, database, workload, the_time, target
     cmd += ' 2> %s/%s' % (dir_name, errfile)
     return cmd
 
+def prepare_killcmd(database):
+    return 'pkill ' + database['name']
+
+def prepare_startcmd(database):
+    return './' + database['name']
+
 def initialize(the_hosts, db):
     """
     Prepares hosts to run the series
@@ -68,7 +76,6 @@ def initialize(the_hosts, db):
     pf = compile('^%s' % database['name'])
     pn = compile('(\d+)/$')
     nos = [0]
-    return os.path.join(database['home'], database['name'] + "_00")
 
     def inner_initialize_0():
     #    sudo('yum -y install at')
@@ -170,13 +177,17 @@ def run_test_series(db, seq):
         # end of all
     disconnect_all()
 
+######################################
+# Remote actions hierarchy goes here #
+######################################
 
 class RemoteBase:
-    def __init__(self, hosts, time, tz):
+    def __init__(self, hosts, time, tz, dir_name):
         # remote hosts to be executed on
         self.hosts = hosts
         self.time = time
         self.tz = tz
+        self.dir_name = dir_name
     def delay_after(self):
         return self.time
     def call(self):
@@ -210,7 +221,7 @@ class RemoteRun(RemoteBase):
         return the_time - self.time
 
     def call(self):
-#        submit_workload(clients, self.dir_path, self.db, self.wl, self.time, self.thr)
+        submit_workload(clients, self.dir_path, self.db, self.wl, self.time, self.thr)
         print "at %s submitted run with threshold = %s (%s)" % (self.time, self.thr, self.hosts)
 
 
@@ -219,6 +230,14 @@ class RemoteKill(RemoteBase):
         RemoteBase.__init__(self, *base)
         self.db = db
     def call(self):
+        database = get_db(self.db)
+        the_time = self.time
+        def inner():
+            with cd(self.dir_name):
+                command = _at(prepare_killcmd(database), the_time)
+                run(command)
+        with almost_nothing():
+            tasks.execute(inner, hosts=self.hosts)
         print "at %s submitted server kill (%s)" % (self.time, self.hosts)
 
 class RemoteStart(RemoteBase):
@@ -226,6 +245,14 @@ class RemoteStart(RemoteBase):
         RemoteBase.__init__(self, *base)
         self.db = db
     def call(self):
+        database = get_db(self.db)
+        the_time = self.time
+        def inner():
+            with cd(self.dir_name):
+                command = _at(prepare_startcmd(database), the_time)
+                run(command)
+        with almost_nothing():
+            tasks.execute(inner, hosts=self.hosts)
         print "at %s submitted server start (%s)" % (self.time, self.hosts)
 
 class RemoteNetworkUp(RemoteBase):
@@ -253,7 +280,8 @@ class Launcher:
     def _common(self, ctor, hosts, *args):
         delta = self.at.base_time + self.delta
         tz = self.at.tz
-        ext_args = list(args) + [hosts, delta, tz]
+        dir_name = self.at.dir_name
+        ext_args = list(args) + [hosts, delta, tz, dir_name]
         step = ctor(*ext_args)
         self.at.seq.append(step)
         return self.delta + step.delay_after()
