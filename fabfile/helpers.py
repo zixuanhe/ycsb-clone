@@ -5,6 +5,8 @@ from fabric.context_managers import settings, hide
 from fabric.operations import run
 from conf import hosts, databases, workloads
 
+basetime = None
+
 def base_time(time=None, round_sec=60, tz = hosts.timezone):
     """
     Get the next timestamp rounded to round_sec seconds
@@ -13,7 +15,9 @@ def base_time(time=None, round_sec=60, tz = hosts.timezone):
     Examples: 2:22:29 -> 2:23:00
               2:22:31 -> 2:24:00
     """
-    if time is None: time = datetime.now(tz)
+    global basetime
+    if basetime is None: basetime = datetime.now(tz)
+    if time is None: time = basetime
     begin = time.min.replace(tzinfo=tz) # long time ago
     seconds = (time - begin).seconds
     rounding = (seconds + round_sec * 1.5) // round_sec * round_sec
