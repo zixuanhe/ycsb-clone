@@ -64,11 +64,12 @@ databases = {
         'home': '/run/shm',
         'command': 'mongodb',
         'properties': {
-            'mongodb.url': 'mongodb://localhost:27017',
+            'mongodb.url': 'mongodb://localhost:27018',
             'mongodb.database': 'ycsb',
             'mongodb.writeConcern': 'normal',
             'mongodb.readPreference': 'primaryPreferred',
-        }
+        },
+        'configdb': 'r5.citrusleaf.local',
     },
 
     'basic' : { #fake database
