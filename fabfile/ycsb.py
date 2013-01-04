@@ -206,17 +206,17 @@ def get_log(db, regex='.*', do=False):
 
 
 @roles('client')
-def kill():
+def kill(force=False):
     """Kills YCSB processes"""
     with settings(warn_only=True):
         run('ps -f -C java')
-        if confirm(red("Do you want to kill Java on the client?")):
+        if force or confirm(red("Do you want to kill Java on the client?")):
             run('killall java')
 
 @roles('client')
-def clean_logs():
+def clean_logs(force=False):
     """Removes all logs from /run/shm"""
-    if confirm(red("Do you want to clear all logs from RAM?")):
+    if force or confirm(red("Do you want to clear all logs from RAM?")):
         run('rm -r /run/shm/*')
 
 @runs_once
