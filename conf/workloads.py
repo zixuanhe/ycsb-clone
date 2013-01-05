@@ -6,8 +6,9 @@ data = {    #global YSCB properties
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
-    #'operationcount': 10000000,
-    'operationcount': 200000000,    #>10min for Aerospike and Couchbase
+    'operationcount': 10000000,
+    #'operationcount': 200000000,    #>10min for Aerospike and Couchbase
+    #'operationcount': 50000000,    #>10min for Cassandra
     'threadcount': 32,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
     'exportmeasurementsinterval': 30000,

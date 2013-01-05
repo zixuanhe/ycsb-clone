@@ -29,6 +29,7 @@ databases = {
             'couchbase.password': '',
             'couchbase.opTimeout': 60000,
             #'couchbase.failureMode': 'Retry',
+            'couchbase.replicateTo': 'ONE',
             'couchbase.checkOperationStatus': 'true',
         }
     },
@@ -46,6 +47,7 @@ databases = {
             'couchbase.password': '',
             'couchbase.opTimeout': 60000,
             #'couchbase.failureMode': 'Retry',
+            'couchbase.replicateTo': 'ONE',
             'couchbase.checkOperationStatus': 'true',
             }
     },
