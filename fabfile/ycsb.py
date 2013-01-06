@@ -224,7 +224,7 @@ def _build_and_upload():
     local('mvn clean package')
     put('distribution/target/ycsb-0.1.4.tar.gz', '~/ycsb.tar.gz')
 
-@roles('client')
+@roles('all_client')
 def deploy():
     """Builds and deploys YCSB to the clients"""
     _build_and_upload()
