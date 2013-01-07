@@ -1,33 +1,65 @@
 Yahoo! Cloud System Benchmark (YCSB)
 ====================================
 
+This version of the YCSB tool is modified by Thumbtack Technology to add 
+support for Aerospike and Couchbase databases, to improve MongoDB driver 
+and to add some automation to run YCSB on multiple clients.
+
 Links
 -----
 http://wiki.github.com/brianfrankcooper/YCSB/
+https://github.com/couchbaselabs/YCSB
 http://research.yahoo.com/Web_Information_Management/YCSB
 ycsb-users@yahoogroups.com
+http://docs.fabfile.org/en/1.3.2/
 
 Getting Started
 ---------------
 
 1. Download the latest release of YCSB:
 
-    wget https://github.com/downloads/brianfrankcooper/YCSB/ycsb-0.1.4.tar.gz
-    tar xfvz ycsb-0.1.4
-    cd ycsb-0.1.4
+    git clone https://github.com/thumbtack-technology/ycsb.git
+    cd ycsb
 
-2. Set up a database to benchmark. There is a README file under each binding
-   directory.
-
-3. Run YCSB command. 
-
-    bin/ycsb load basic -P workloads/workloada
-    bin/ycsb run basic -P workloads/workloada
-
-   Running the `ycsb` command without any argument will print the usage. 
+2. Set up a database and client hosts to benchmark. 
+   There is a README file under each binding directory.
    
-   See https://github.com/brianfrankcooper/YCSB/wiki/Running-a-Workload
-   for a detailed documentation on how to run a workload.
+   You must have SSH (and in most cases root) access to all your hosts.
 
-   See https://github.com/brianfrankcooper/YCSB/wiki/Core-Properties for 
-   the list of available workload properties.
+3. Configure hosts, databases and workloads settings:
+   Edit files: conf/hosts.py, conf/databases.py, conf/workloads.py
+   
+4. Build and deploy YCSB to client hosts
+
+    fab ycsb_deploy
+
+5. Load data to databases
+
+    fab ycsb_load:db=<dbname>
+
+   <dbname> is aerospike, couchbase, couchbase2, cassandra, 
+   mongodb or any other you configured
+
+6. Run YCSB workload
+
+    fab ycsb_run:db=<dbname>,workload=A
+
+7. Check the YCSB status
+ 
+    fab ycsb_status:db=<dbname>
+    
+8. Download YCSB results and logs
+
+    fab ycsb_get:db=<dbname>,do=True
+    
+   You'll get some .out and .err files in the current directory downloaded
+   from all your clients.
+   
+9. Aggregate the YCSB results
+
+    ./bin/merge.py
+    
+   This script gets the most important parameters from YCSB .out files,
+   such as throughput and latency, aggregates the results from multiple clients
+   and prints the result as tab-separated values which can be easy pasted
+   into any spreadsheet.
