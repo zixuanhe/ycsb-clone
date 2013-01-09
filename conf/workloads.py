@@ -1,13 +1,13 @@
 root = '/opt/ycsb'  #root of YCSB installation
 
 data = {    #global YSCB properties
-    #'recordcount': 500000000,  #SSD
-    'recordcount': 50000000,    #RAM
+    'recordcount': 200000000,  #SSD
+    #'recordcount': 50000000,    #RAM
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
-    'operationcount': 10000000,
-    #'operationcount': 200000000,    #>10min for Aerospike and Couchbase
+    #'operationcount': 10000000,
+    'operationcount': 200000000,    #>10min for Aerospike and Couchbase
     #'operationcount': 50000000,    #>10min for Cassandra
     'threadcount': 32,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
