@@ -3,6 +3,8 @@ package net.thumbtack.test;
 import com.couchbase.client.CouchbaseConnectionFactory;
 import com.couchbase.client.CouchbaseConnectionFactoryBuilder;
 import net.spy.memcached.FailureMode;
+import net.spy.memcached.PersistTo;
+import net.spy.memcached.ReplicateTo;
 import net.spy.memcached.compat.log.Logger;
 import net.spy.memcached.compat.log.LoggerFactory;
 import net.spy.memcached.internal.GetFuture;
@@ -34,13 +36,17 @@ public class CouchbaseClient {
     private String bucket;
     private String user;
     private String password;
+    private PersistTo persistTo;
+    private ReplicateTo replicateTo;
 
-    public CouchbaseClient(String host, int port, String bucket, String user, String password) {
+    public CouchbaseClient(String host, int port, String bucket, String user, String password, PersistTo persistTo, ReplicateTo replicateTo) {
         this.host = host;
         this.port = port;
         this.bucket = bucket;
         this.user = user;
         this.password = password;
+        this.persistTo = persistTo;
+        this.replicateTo = replicateTo;
     }
 
     public void init() throws IOException, URISyntaxException {
@@ -77,10 +83,20 @@ public class CouchbaseClient {
 
     public int insert(String key, String value) {
         try {
-            OperationFuture<Boolean> future = client.add(key, Integer.MAX_VALUE, value);
+            OperationFuture<Boolean> future = client.add(key, Integer.MAX_VALUE, value, persistTo, replicateTo);
             return getReturnCode(future);
         } catch (Exception e) {
             log.error("Error inserting value", e);
+            return ERROR;
+        }
+    }
+
+    public int update(String key, String value) {
+        try {
+            OperationFuture<Boolean> future = client.replace(key, Integer.MAX_VALUE, value, persistTo, replicateTo);
+            return getReturnCode(future);
+        } catch (Exception e) {
+            log.error("Error updating value with key: " + key, e);
             return ERROR;
         }
     }

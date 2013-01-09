@@ -1,5 +1,8 @@
 package net.thumbtack.test;
 
+import net.spy.memcached.PersistTo;
+import net.spy.memcached.ReplicateTo;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -15,12 +18,14 @@ public class Main {
     private static String bucket = "default";
     private static String user = "";
     private static String password = "";
+    private static PersistTo persistTo = PersistTo.ZERO;
+    private static ReplicateTo replicateTo = ReplicateTo.ZERO;
 
     private static long recordCount = 0;
     private static long operationCount = 0;
     private static int threadCount = 0;
     private static long insertStart = 0;
-    private static boolean doInserts = true;
+    private static OperationType operationType;
 
     public static void usageMessage() {
         System.out.println("Usage: java net.thumbtack.test.Main [options]");
@@ -32,9 +37,11 @@ public class Main {
         System.out.println("  -bucket name: name of the bucket (default: default)");
         System.out.println("  -records n: number of records in DB");
         System.out.println("  -insertstart n: start key number (default: 0)");
-        System.out.println("  -operations n: number of read operations (required for '-optype read' only)");
+        System.out.println("  -operations n: number of read operations");
         System.out.println("  -threads n: number of threads");
-        System.out.println("  -optype [insert|read]: specified type of operations");
+        System.out.println("  -optype [insert|read|update]: specified type of operations");
+        System.out.println("  -persistto [zero|one|two|three|four|master]: persistence type (default: zero)");
+        System.out.println("  -replicateto [zero|one|two|three]: replication type (default: zero)");
     }
 
     public static void main(String[] args) throws URISyntaxException, IOException, InterruptedException {
@@ -65,10 +72,27 @@ public class Main {
                 insertStart = Integer.parseInt(readArg(args));
             } else if (args[curArg].equals("-optype")) {
                 String op = readArg(args);
-                if (op.equals("insert")) {
-                    doInserts = true;
-                } else if (op.equals("read")) {
-                    doInserts = false;
+                try {
+                    operationType = OperationType.valueOf(OperationType.class, op.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    usageMessage();
+                    System.exit(0);
+                }
+            } else if (args[curArg].equals("-persistto")) {
+                String per = readArg(args);
+                try {
+                    persistTo = PersistTo.valueOf(PersistTo.class, per.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    usageMessage();
+                    System.exit(0);
+                }
+            } else if (args[curArg].equals("-replicateto")) {
+                String rep = readArg(args);
+                try {
+                    replicateTo = ReplicateTo.valueOf(ReplicateTo.class, rep.toUpperCase());
+                } catch (IllegalArgumentException e) {
+                    usageMessage();
+                    System.exit(0);
                 }
             } else {
                 System.out.println("Unknown option " + args[curArg]);
@@ -91,15 +115,15 @@ public class Main {
             System.exit(0);
         }
 
-        if (!doInserts && operationCount == 0) {
+        if (operationType != OperationType.INSERT && operationCount == 0) {
             usageMessage();
             System.exit(0);
         }
 
         runThreads();
 
-        if (!doInserts) {
-            System.out.println("PAUSE FOR 10 SECONDS!");
+        if (operationType == OperationType.READ) {
+            System.out.println("PAUSE!");
             Thread.sleep(10000);
             System.out.println("SECOND WAVE!");
             runThreads();
@@ -123,8 +147,8 @@ public class Main {
         long recordsPerThread = recordCount / threadCount;
         for (int i = 0; i < threadCount; i++) {
             long end = start + recordsPerThread;
-            threads[i] = new ClientThread(new CouchbaseClient(host, port, bucket, user, password),
-                    operationCount, start, end, !doInserts);
+            threads[i] = new ClientThread(new CouchbaseClient(host, port, bucket, user, password, persistTo, replicateTo),
+                    operationCount, start, end, operationType);
             start = end;
         }
         for (int i = 0; i < threadCount; i++) {
