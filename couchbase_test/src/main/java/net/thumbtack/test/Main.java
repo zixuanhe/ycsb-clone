@@ -13,7 +13,7 @@ public class Main {
 
     private static int curArg = 0;
 
-    private static String host = "127.";
+    private static String host = "127.0.0.1";
     private static int port = 8091;
     private static String bucket = "default";
     private static String user = "";
