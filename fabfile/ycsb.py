@@ -217,7 +217,7 @@ def kill(force=False):
 def clean_logs(force=False):
     """Removes all logs from /run/shm"""
     if force or confirm(red("Do you want to clear all logs from RAM?")):
-        run('rm -r /run/shm/*')
+        run('rm -rf /run/shm/*')
 
 @runs_once
 def _build_and_upload():
