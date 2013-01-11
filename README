@@ -42,6 +42,7 @@ Getting Started
 
    <dbname> is aerospike, couchbase, couchbase2, cassandra, 
    mongodb or any other you configured
+   Edit conf/workloads.py to confiture workloads root directory
 
 7. Run YCSB workload
 
@@ -71,7 +72,7 @@ Notes
 -----
 
 This tool was tested using following software versions
-* Ubuntu (12.04)
+* Ubuntu Server (12.04)
 * Git (1.7.10.4)
 * openjdk-7-jdk (7u9-2.3.3)
 * Maven (2.2.1)
