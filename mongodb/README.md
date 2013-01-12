@@ -17,7 +17,7 @@ on x86-64 Linux box:
 
 Clone the YCSB git repository and compile:
 
-    git clone git://github.com/brianfrankcooper/YCSB.git
+    git clone [put YCSB git repository URL]
     cd YCSB
     mvn clean package
 
