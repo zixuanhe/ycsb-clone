@@ -92,7 +92,10 @@ public class DBWrapper extends DB {
      * Called once per DB instance; there is one DB instance per client thread.
      */
     public void cleanup() throws DBException {
+        long st=System.nanoTime();
         _db.cleanup();
+        long en=System.nanoTime();
+        _measurements.measure("CLEANUP", (int)((en-st)/1000));
     }
 
     /**

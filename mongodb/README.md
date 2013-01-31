@@ -42,3 +42,5 @@ See the next section for the list of configuration parameters for MongoDB.
 ### `mongodb.writeConcern` (default `safe`)
 
 ### `mongodb.readPreference` (default `primary`)
+
+### `mongodb.maxconnections` (default `10`)
