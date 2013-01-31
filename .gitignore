@@ -1,1 +1,14 @@
-/elasticsearch/target/
+.idea/
+*~
+*.iml
+*.pyc
+aerospike/target/
+cassandra/target/
+core/target/
+couchbase-1.8/target/
+couchbase-2.0/target/
+couchbase_test/target/
+distribution/target/
+elasticsearch/target/
+memcached/target/
+mongodb/target/

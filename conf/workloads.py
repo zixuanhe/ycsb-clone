@@ -2,13 +2,14 @@ root = '/opt/ycsb'  #root of YCSB installation
 
 data = {    #global YSCB properties
     'recordcount': 200000000,  #SSD
+    #'recordcount': 500000000,  #SSD
     #'recordcount': 50000000,    #RAM
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
     #'operationcount': 10000000,
-    'operationcount': 200000000,    #>10min for Aerospike and Couchbase
-    #'operationcount': 50000000,    #>10min for Cassandra
+    #'operationcount': 200000000,    #>10min for Aerospike and Couchbase
+    'operationcount': 50000000,    #>10min for Cassandra and MongoDB
     'threadcount': 32,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
     'exportmeasurementsinterval': 30000,
@@ -19,6 +20,7 @@ data = {    #global YSCB properties
     'retrydelay': 1,
     #'readallfields': 'false',
     #'writeallfields': 'false',
+    #'maxexecutiontime': 600,
 }
 
 workloads = {
@@ -34,7 +36,7 @@ workloads = {
         'name': 'workloadc',
         'propertyfiles': [ root + '/workloads/workloadc' ],
         'properties': {     #additional workload properties, overrides the global ones
-            'maxexecutiontime': 60000,
+            #'maxexecutiontime': 60000,
         },
     },
 }

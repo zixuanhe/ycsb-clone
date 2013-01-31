@@ -46,8 +46,8 @@ databases = {
             'couchbase.password': '',
             'couchbase.opTimeout': 60000,
             #'couchbase.failureMode': 'Retry',
-            'couchbase.persistTo': 'ONE',
-            'couchbase.replicateTo': 'ZERO',
+            #'couchbase.persistTo': 'ONE',
+            #'couchbase.replicateTo': 'ONE',
             'couchbase.checkOperationStatus': 'true',
             }
     },
@@ -58,6 +58,8 @@ databases = {
         'command': 'cassandra-10',
         'properties': {
             'hosts': 'e1.citrusleaf.local,e2.citrusleaf.local,e3.citrusleaf.local,e4.citrusleaf.local',
+            'cassandra.readconsistencylevel': 'ONE',
+            'cassandra.writeconsistencylevel': 'ONE',
         }
     },
 
@@ -69,6 +71,7 @@ databases = {
             'mongodb.url': 'mongodb://localhost:27018',
             'mongodb.database': 'ycsb',
             'mongodb.writeConcern': 'normal',
+            #'mongodb.writeConcern': 'replicas_safe',
             'mongodb.readPreference': 'primaryPreferred',
         },
         'configdb': 'r5.citrusleaf.local',
