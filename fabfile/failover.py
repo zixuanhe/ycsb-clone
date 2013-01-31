@@ -1,5 +1,5 @@
 import sys, os
-sys.path.insert(0, os.path.abspath('..')) # hack
+
 from fabric import tasks
 from fabric.network import disconnect_all
 from fabric.operations import run, put
@@ -21,7 +21,7 @@ servers = hosts.env.roledefs['server']
 benchmark_script = 'execute.sh'
 
 # use LOCAL=True for testing on the local virtual machines
-LOCAL = True
+LOCAL = False
 if LOCAL:
     # local virtual machines
     hosts.env.user = 'vagrant'
@@ -62,10 +62,10 @@ def prepare_ycsbruncmd(the_hosts, dir_name, database, workload, the_time, target
     return cmd
 
 def prepare_killcmd(database):
-    return 'pkill ' + database['name']
+    return database['failover']['kill_command']
 
 def prepare_startcmd(database):
-    return './' + database['name']
+    return database['failover']['start_command']
 
 def initialize(the_hosts, db):
     """

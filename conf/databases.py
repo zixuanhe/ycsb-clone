@@ -49,7 +49,11 @@ databases = {
             #'couchbase.persistTo': 'ONE',
             #'couchbase.replicateTo': 'ONE',
             'couchbase.checkOperationStatus': 'true',
-            }
+            },
+        'failover': {
+            'kill_command': '/etc/init.d/couchbase-server stop',
+            'start_command': '/etc/init.d/couchbase-server start',
+        }
     },
 
     'cassandra' : {

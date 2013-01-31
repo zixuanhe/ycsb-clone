@@ -1,23 +1,28 @@
 root = '/opt/ycsb'  #root of YCSB installation
 
 data = {    #global YSCB properties
-    'recordcount': 200000000,  #SSD
+    #'recordcount': 200000000,  #SSD
     #'recordcount': 500000000,  #SSD
-    #'recordcount': 50000000,    #RAM
+    'recordcount': 50000000,    #RAM
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
     #'operationcount': 10000000,
     #'operationcount': 200000000,    #>10min for Aerospike and Couchbase
-    'operationcount': 50000000,    #>10min for Cassandra and MongoDB
+    #'operationcount': 50000000,    #>10min for Cassandra and MongoDB
+    'operationcount': 250000*600*4, # 40min at 250k
+    'maxexecutiontime': 600*4,      # 40min
+
     'threadcount': 32,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
     'exportmeasurementsinterval': 30000,
     #'warmupexecutiontime': 60000,
-    'insertretrycount': 1000000000,
+    #'insertretrycount': 1000000000,
+    'insertretrycount': 10,
+    'ignoreinserterrors': 'true',
     'readretrycount': 1000,
     'updateretrycount': 1000,
-    'retrydelay': 1,
+    #'retrydelay': 1,
     #'readallfields': 'false',
     #'writeallfields': 'false',
     #'maxexecutiontime': 600,
