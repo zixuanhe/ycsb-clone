@@ -76,7 +76,7 @@
     <!--<module>redis</module>-->
     <!--<module>voldemort</module>-->
     <module>aerospike</module>
-    <!--<module>memcached</module>-->
+    <module>memcached</module>
     <!--<module>couchbase-1.8</module>-->
     <module>couchbase-2.0</module>   <!--couchbase-2.0 conflicts with couchbase-1.8, use one of them-->
     <!--<module>membase</module>-->
