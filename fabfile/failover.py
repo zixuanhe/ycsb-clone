@@ -233,9 +233,8 @@ class RemoteKill(RemoteBase):
         database = get_db(self.db)
         the_time = self.time
         def inner():
-            with cd(self.dir_name):
-                command = _at(prepare_killcmd(database), the_time)
-                run(command)
+            command = _at(prepare_killcmd(database), the_time)
+            run(command)
         with almost_nothing():
             tasks.execute(inner, hosts=self.hosts)
         print "at %s submitted server kill (%s)" % (self.time, self.hosts)
@@ -248,9 +247,8 @@ class RemoteStart(RemoteBase):
         database = get_db(self.db)
         the_time = self.time
         def inner():
-            with cd(self.dir_name):
-                command = _at(prepare_startcmd(database), the_time)
-                run(command)
+            command = _at(prepare_startcmd(database), the_time)
+            run(command)
         with almost_nothing():
             tasks.execute(inner, hosts=self.hosts)
         print "at %s submitted server start (%s)" % (self.time, self.hosts)
