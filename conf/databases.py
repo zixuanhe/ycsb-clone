@@ -51,12 +51,13 @@ databases = {
             'couchbase.checkOperationStatus': 'true',
             },
         'failover': {
+            'files': ['couchbase_kill.sh', 'couchbase_start.sh'],
             'kill_command': ''' \
-ssh e1 "kill -9 \$(cat /opt/couchbase/var/lib/couchbase/couchbase-server.pid)"; \
+ssh e1 ~/couchbase_kill.sh; \
 sleep 1; \
 /opt/couchbase/bin/couchbase-cli failover -c localhost:8091 -u admin -p 123123 --server-failover=192.168.109.168;''',
             'start_command': ''' \
-ssh e1 "/etc/init.d/couchbase-server start;"; \
+ssh e1 ~/couchbase_start.sh; \
 sleep 1; \
 /opt/couchbase/bin/couchbase-cli server-readd -c localhost:8091 -u admin -p 123123 --server-add=192.168.109.168 --server-add-username=admin --server-add-password=123123; \
 /opt/couchbase/bin/couchbase-cli rebalance -c localhost:8091 -u admin -p 123123;''',

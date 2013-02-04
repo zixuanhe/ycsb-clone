@@ -130,6 +130,19 @@ def initialize(the_hosts, db):
         tasks.execute(inner_initialize_1, hosts=the_hosts)
     return dir_name
 
+def initialize_servers(db):
+    """
+    Prepares server hosts to run the failover test
+    """
+    database = get_db(db)
+    local_dir = os.path.dirname(__file__)
+    def inner_initialize():
+        for file in database['failover']['files']:
+            put(os.path.join(local_dir, file), file, mode=0744)
+        print 'host %s initialized ' % hosts.env.host
+    with almost_nothing():
+        tasks.execute(inner_initialize, hosts=servers)
+
 def submit_workload(the_hosts, dir_name, db, workload, the_time, target = None):
     """
     Schedules the workload.
@@ -234,7 +247,7 @@ class RemoteKill(RemoteBase):
         the_time = self.time
         def inner():
             command = _at(prepare_killcmd(database), the_time)
-            run(command)
+            run(command, shell=True)
         with almost_nothing():
             tasks.execute(inner, hosts=self.hosts)
         print "at %s submitted server kill (%s)" % (self.time, self.hosts)
@@ -248,7 +261,7 @@ class RemoteStart(RemoteBase):
         the_time = self.time
         def inner():
             command = _at(prepare_startcmd(database), the_time)
-            run(command)
+            run(command, shell=True)
         with almost_nothing():
             tasks.execute(inner, hosts=self.hosts)
         print "at %s submitted server start (%s)" % (self.time, self.hosts)
@@ -304,9 +317,10 @@ class Launcher:
 
 
 class AT:
-    def __init__(self, the_hosts, the_db, the_tz = hosts.timezone):
+    def __init__(self, the_db, the_tz = hosts.timezone):
         self.base_time = base_time(tz = the_tz)
-        self.dir_name = initialize(the_hosts, the_db)
+        self.dir_name = initialize(clients, the_db)
+        initialize_servers(the_db)
         self.tz = the_tz
         self.seq = []
 

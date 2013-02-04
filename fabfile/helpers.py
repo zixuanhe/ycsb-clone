@@ -64,7 +64,7 @@ def _sh_quote(argument):
         )
 
 def _at(cmd, time=base_time()):
-    return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))
+    return 'echo %s | at %s today' % (_sh_quote(cmd), time.strftime('%H:%M'))
 
 
 def determine_file(regex):
