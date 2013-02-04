@@ -54,6 +54,14 @@ def get_properties(database, workload=None):
             properties[key] = value
     return properties
 
+def _sh_quote(argument):
+    return '"%s"' % (
+        argument
+        .replace('\\', '\\\\')
+        .replace('"', '\\"')
+        .replace('$', '\$')
+        .replace('`', '\`')
+        )
 
 def _at(cmd, time=base_time()):
     return 'echo "%s" | at %s today' % (cmd, time.strftime('%H:%M'))
