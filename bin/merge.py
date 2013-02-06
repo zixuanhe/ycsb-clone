@@ -38,6 +38,7 @@ def merge():
     ops['INSERT']  = other_ops
     ops['READ']    = other_ops
     ops['UPDATE']  = other_ops
+    ops['CLEANUP']  = other_ops
     ops_keys = ops.keys()
     regexps = map(re.compile, metrics)
     cns = []
@@ -78,7 +79,7 @@ def merge():
     #UPDATE Return=1 {'1': 477.0, '3': 488.0, '2': 514.0, '4': 522.0}
     headers1 = ['']
     headers2 = ['']
-    # operations are sorted in the [OVERALL, READ, UPDATE] order
+    # operations are sorted in the [OVERALL, READ, UPDATE, CLEANUP] order
     for oc in sorted(stats.keys(), key=ops_keys.index):
         for mt in ops[oc]:
             headers1.append(oc) # operation code like OVERALL, READ, UPDATE

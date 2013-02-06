@@ -1,5 +1,7 @@
 root = '/opt/ycsb'  #root of YCSB installation
 
+TIME_DURATION = 40*60 #40 Minutes
+
 data = {    #global YSCB properties
     #'recordcount': 200000000,  #SSD
     #'recordcount': 500000000,  #SSD
@@ -10,8 +12,8 @@ data = {    #global YSCB properties
     #'operationcount': 10000000,
     #'operationcount': 200000000,    #>10min for Aerospike and Couchbase
     #'operationcount': 50000000,    #>10min for Cassandra and MongoDB
-    'operationcount': 250000*600*4, # 40min at 250k
-    'maxexecutiontime': 600*4,      # 40min
+    'operationcount': 250000*TIME_DURATION, # 40min at 250k
+    'maxexecutiontime': TIME_DURATION,      # 40min
 
     'threadcount': 32,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',
@@ -22,6 +24,7 @@ data = {    #global YSCB properties
     'ignoreinserterrors': 'true',
     'readretrycount': 1000,
     'updateretrycount': 1000,
+    'measurementtype': 'timeseries',
     #'retrydelay': 1,
     #'readallfields': 'false',
     #'writeallfields': 'false',

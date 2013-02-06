@@ -99,9 +99,10 @@ def status(db):
                 return (d, f, float(t))
             def order(t):
                 return -t[2]
-            files = sorted(map(extract, lines), key = order)
-            (d, f, t) = files[0]
-            dir_name = os.path.normpath(os.path.join(database['home'], d))
+            if lines and not (len(lines) == 1 and not lines[0]):
+                files = sorted(map(extract, lines), key = order)
+                (d, f, t) = files[0]
+                dir_name = os.path.normpath(os.path.join(database['home'], d))
         with cd(dir_name):
             ls_out = run('ls --format=single-column --sort=t *.lock')
             msg = green('free') if 'cannot access' in ls_out else red('locked')
@@ -135,6 +136,7 @@ def get_log(db, regex='.*', do=False):
     """ Download *.err and *.out logs satisfying the regex to be transferred
     OR transfer all logs in the batch dir
     """
+
     database = get_db(db)
     with almost_nothing():
         cn = _client_no() + 1
@@ -142,6 +144,8 @@ def get_log(db, regex='.*', do=False):
             (f0, is_dir) = determine_file(regex)
             print blue('Filename at c%s: ' % cn, bold = True), green(f0, bold = True)
         # now do the processing, if enabled
+        #If do is presented, then do is str. bool(str) = True if str is not empty
+        #May be we should process str as bool?
         if do:
             with cd(database['home']):
                 if is_dir:
