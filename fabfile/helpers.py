@@ -7,7 +7,8 @@ from conf import hosts, databases, workloads
 
 basetime = None
 
-def base_time(time=None, round_sec=120, tz = hosts.timezone):
+
+def base_time(time=None, round_sec=360, tz = hosts.timezone):
     """
     Get the next timestamp rounded to round_sec seconds
     the function returns some future time rounded accordingly
@@ -25,6 +26,8 @@ def base_time(time=None, round_sec=120, tz = hosts.timezone):
 
 def almost_nothing():
     return settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True)
+    #return settings(hide(), warn_only=False)
+   
 
 def get_db(database):
     if not databases.databases.has_key(database):

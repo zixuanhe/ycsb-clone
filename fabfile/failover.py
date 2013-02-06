@@ -124,10 +124,13 @@ def initialize(the_hosts, db):
                 m = search('^(\d+)\t', task)
                 if m:
                     tid.append(m.group(1))
-            run('atrm %s' % ' '.join(tid))
+            if tid:
+                run('atrm %s' % ' '.join(tid))
             print 'host %s initialized ' % hosts.env.host
+
     with almost_nothing():
         tasks.execute(inner_initialize_1, hosts=the_hosts)
+
     return dir_name
 
 def initialize_servers(db):
@@ -159,6 +162,7 @@ def submit_workload(the_hosts, dir_name, db, workload, the_time, target = None):
 
     with almost_nothing():
         tasks.execute(inner_submit_workload, hosts=the_hosts)
+
 
 def delay(wl, t):
     """ Returns estimated delay (run time) for the test with parameter t.
