@@ -15,7 +15,12 @@ databases = {
         'status': {
             'hosts': hosts.env.roledefs['server'][0:1],     #hosts on which to run the status command
             'command': '/opt/citrusleaf/bin/clmonitor -e info'  #the status command
-        }
+        },
+        'failover': {
+            'files': [],
+            'kill_command': '/usr/bin/killall -9 cld',
+            'start_command': '/etc/init.d/citrusleaf start',
+        },
     },
 
     'couchbase' : {
@@ -82,7 +87,12 @@ echo '/opt/couchbase/bin/couchbase-cli rebalance' >> /run/shm/at.log; \
             'hosts': 'e1.citrusleaf.local,e2.citrusleaf.local,e3.citrusleaf.local,e4.citrusleaf.local',
             'cassandra.readconsistencylevel': 'ONE',
             'cassandra.writeconsistencylevel': 'ONE',
-        }
+        },
+        'failover': {
+            'files': [],
+            'kill_command': '/usr/bin/killall -9 java',
+            'start_command': '/opt/cassandra/bin/cassandra',
+        },
     },
 
     'mongodb' : {
@@ -97,6 +107,11 @@ echo '/opt/couchbase/bin/couchbase-cli rebalance' >> /run/shm/at.log; \
             'mongodb.readPreference': 'primaryPreferred',
         },
         'configdb': 'r5.citrusleaf.local',
+        'failover': {
+            'files': [],
+            'kill_command': '/usr/bin/killall -9 mongod',
+            'start_command': '~/mongo_run.sh',
+        },
     },
 
     'basic' : { #fake database
