@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 import os
 import re
+
 from fabric.context_managers import settings, hide
 from fabric.operations import run
 from conf import hosts, databases, workloads
@@ -8,7 +9,7 @@ from conf import hosts, databases, workloads
 basetime = None
 
 
-def base_time(time=None, round_sec=360, tz = hosts.timezone):
+def base_time(time=None, round_sec=300, tz = hosts.timezone):
     """
     Get the next timestamp rounded to round_sec seconds
     the function returns some future time rounded accordingly

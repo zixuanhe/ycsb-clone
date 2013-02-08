@@ -1,17 +1,22 @@
 import sys, os
-
-from fabric import tasks
-from fabric.network import disconnect_all
-from fabric.operations import run, put
-from conf import hosts
-from conf import workloads
-from fabfile.helpers import almost_nothing, base_time
 from datetime import timedelta
 from re import search, compile
+
+from conf import hosts
+from conf import workloads
+
+from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing, \
+                get_outfilename, get_properties, almost_nothing, base_time
+
+from fabric import tasks
+from fabric.colors import green
 from fabric.context_managers import cd
+from fabric.network import disconnect_all
+#from fabric.operations import run, put
 from fabric.operations import run, put, sudo
+
 from pytz import timezone
-from fabfile.helpers import get_db, get_workload, _at, base_time, almost_nothing, get_outfilename, get_properties
+
 
 # remote citrusleaf machines
 tz = hosts.timezone
@@ -89,13 +94,15 @@ def initialize(the_hosts, db):
     #        print 'ycsb deployed'
         sudo('mkdir -p %s ; chmod 1777 %s' % (db_home, db_home))
         with cd(db_home):
-            ls = run('ls --format=single-column --sort=t -d -- */').split('\r\n')
+            ls = run("ls --format=single-column --sort=t -d -- */")
             # the most recent file satisfying pattern
-            file_names = [f for f in ls if pf.search(f)]
-            for file_name in file_names:
-                mn = pn.search(file_name)
-                if mn:
-                    nos.append(int(mn.group(1)) + 1)
+            if ls:
+                ls = ls.split('\r\n')
+                file_names = [f for f in ls if pf.search(f)]
+                for file_name in file_names:
+                    mn = pn.search(file_name)
+                    if mn:
+                        nos.append(int(mn.group(1)) + 1)
         # find the maximum number for all of the hosts
     with almost_nothing():
         tasks.execute(inner_initialize_0, hosts=the_hosts)
@@ -126,7 +133,7 @@ def initialize(the_hosts, db):
                     tid.append(m.group(1))
             if tid:
                 run('atrm %s' % ' '.join(tid))
-            print 'host %s initialized ' % hosts.env.host
+            print green('host %s initialized ' % hosts.env.host)
 
     with almost_nothing():
         tasks.execute(inner_initialize_1, hosts=the_hosts)
@@ -142,7 +149,7 @@ def initialize_servers(db):
     def inner_initialize():
         for file in database['failover']['files']:
             put(os.path.join(local_dir, file), file, mode=0744)
-        print 'host %s initialized ' % hosts.env.host
+        print green('host %s initialized ' % hosts.env.host)
     with almost_nothing():
         tasks.execute(inner_initialize, hosts=servers)
 
@@ -185,7 +192,7 @@ def run_test_series(db, seq):
         t = t if t > 0 else None
         # submit the task
         submit_workload(clients, dir_name, db, wl, the_time, t)
-        print "submitted on %s with threshold = %s" % (the_time, t)
+        print green("submitted on %s with threshold = %s" % (the_time, t))
         if LOCAL:
             the_time += timedelta(minutes = 1)
         else:
@@ -208,7 +215,7 @@ class RemoteBase:
     def delay_after(self):
         return self.time
     def call(self):
-        print "called %s at %s for %s" % (self, self.time, self.hosts)
+        print green("called %s at %s for %s" % (self, self.time, self.hosts))
 
 class RemoteInit(RemoteBase):
     def __init__(self, db, *base):
@@ -239,7 +246,7 @@ class RemoteRun(RemoteBase):
 
     def call(self):
         submit_workload(clients, self.dir_path, self.db, self.wl, self.time, self.thr)
-        print "at %s submitted run with threshold = %s (%s)" % (self.time, self.thr, self.hosts)
+        print green("at %s submitted run with threshold = %s (%s)" % (self.time, self.thr, self.hosts))
 
 
 class RemoteKill(RemoteBase):
@@ -254,7 +261,7 @@ class RemoteKill(RemoteBase):
             run(command, shell=True)
         with almost_nothing():
             tasks.execute(inner, hosts=self.hosts)
-        print "at %s submitted server kill (%s)" % (self.time, self.hosts)
+        print green("at %s submitted server kill (%s)" % (self.time, self.hosts))
 
 class RemoteStart(RemoteBase):
     def __init__(self, db, *base):
@@ -268,19 +275,19 @@ class RemoteStart(RemoteBase):
             run(command, shell=True)
         with almost_nothing():
             tasks.execute(inner, hosts=self.hosts)
-        print "at %s submitted server start (%s)" % (self.time, self.hosts)
+        print green("at %s submitted server start (%s)" % (self.time, self.hosts))
 
 class RemoteNetworkUp(RemoteBase):
     def __init__(self, *base):
         RemoteBase.__init__(self, *base)
     def call(self):
-        print "at %s submitted network up (%s)" % (self.time, self.hosts)
+        print green("at %s submitted network up (%s)" % (self.time, self.hosts))
 
 class RemoteNetworkDown(RemoteBase):
     def __init__(self, *base):
         RemoteBase.__init__(self, *base)
     def call(self):
-        print "at %s submitted network down (%s)" % (self.time, self.hosts)
+        print green("at %s submitted network down (%s)" % (self.time, self.hosts))
 
 
 class Network:
@@ -322,8 +329,8 @@ class Launcher:
 
 class AT:
     def __init__(self, the_db, the_tz = hosts.timezone):
-        self.base_time = base_time(tz = the_tz)
         self.dir_name = initialize(clients, the_db)
+        self.base_time = base_time(tz = the_tz)
         initialize_servers(the_db)
         self.tz = the_tz
         self.seq = []
