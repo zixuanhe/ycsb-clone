@@ -26,8 +26,8 @@ def base_time(time=None, round_sec=300, tz = hosts.timezone):
     return time + timedelta(0, rounding-seconds, -time.microsecond)
 
 def almost_nothing():
-    return settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True)
-    #return settings(hide(), warn_only=False)
+    #return settings(hide('running', 'warnings', 'stdout', 'stderr'), warn_only=True)
+    return settings(hide(), warn_only=False)
    
 
 def get_db(database):
