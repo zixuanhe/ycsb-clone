@@ -3,7 +3,7 @@
 import os
 import re
 
-from collections import OrderedDict
+from merge import OrderedDict
 
 def avg(seq):
     return sum(seq) / float(len(seq))
@@ -29,9 +29,16 @@ def merge():
                         timestamp = int(timestamp)
                         #if timestamp == 0:
                         #   print items
+
                         lat = float(lat) / 1000.0
-                        thr = float(thr.strip().split(' ', 1)[0])
+                        thr = thr.strip().split(' ', 1)[0]
+                        try:
+                            thr = float(thr)
+                        except ValueError:
+                            #For "[UPDATE], 1575400, 16432.262857142858, 5250.0Reconnecting to the DB..." line
+                            thr = float(re.search('\d+\.\d+', thr).group(0))
                         thr_stats = throughput.get(timestamp)
+                            
                         #TODO latency stats
                         if not thr_stats:
                             thr_stats = 0
