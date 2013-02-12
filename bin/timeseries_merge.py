@@ -3,7 +3,7 @@
 import os
 import re
 
-from merge import OrderedDict
+from collections  import OrderedDict
 
 def avg(seq):
     return sum(seq) / float(len(seq))
