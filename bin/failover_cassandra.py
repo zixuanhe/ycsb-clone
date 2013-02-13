@@ -8,7 +8,7 @@ from fabfile.failover import clients, servers, AT
 
 
 #########################
-db = 'aerospike'
+db = 'cassandra'
 wl = 'A'
 e1 = servers[0]
 
@@ -17,7 +17,7 @@ NODE_RESTART_TIME = 1200 #In secs.
 
 at = AT(db)
 # start workload
-at[0].client_run(clients, db, wl)#, 300000)
+at[0].client_run(clients, db, wl, 22000)
 
 # kill server
 #at[600].server_kill([e1], db)
