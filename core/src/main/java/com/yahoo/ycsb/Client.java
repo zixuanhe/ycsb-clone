@@ -150,8 +150,10 @@ class ExportMeasurementsThread extends Thread {
             exporter.write("OVERALL", "Throughput(ops/sec)", throughput);
             exporter.close();
         } catch (IOException e) {
-            e.printStackTrace();
-            e.printStackTrace(System.out);
+            //TODO make error logging level configurable
+            //e.printStackTrace();
+            //e.printStackTrace(System.out);
+            System.err.println(e);
         }
     }
 
@@ -179,8 +181,10 @@ class ExportMeasurementsThread extends Thread {
             try {
                 Measurements.getMeasurements().exportMeasurementsPart(exporter);
             } catch (IOException e) {
-                e.printStackTrace();
-                e.printStackTrace(System.out);
+                //TODO make error logging level configurable
+                //e.printStackTrace();
+                //e.printStackTrace(System.out);
+                System.err.println(e);
             }
         } while (!alldone);
         exportOverall();
@@ -312,16 +316,20 @@ class ClientThread extends Thread {
         try {
             _db.init();
         } catch (DBException e) {
-            e.printStackTrace();
-            e.printStackTrace(System.out);
+            //TODO make error logging level configurable
+            //e.printStackTrace();
+            //e.printStackTrace(System.out);
+            System.err.println(e);
             return;
         }
 
         try {
             _workloadstate = _workload.initThread(_props);
         } catch (WorkloadException e) {
-            e.printStackTrace();
-            e.printStackTrace(System.out);
+            //TODO make error logging level configurable
+            //e.printStackTrace();
+            //e.printStackTrace(System.out);
+            System.err.println(e);
             return;
         }
 
@@ -354,15 +362,19 @@ class ClientThread extends Thread {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
-            e.printStackTrace(System.out);
+            //TODO make error logging level configurable
+            //e.printStackTrace();
+            //e.printStackTrace(System.out);
+            System.err.println(e);
         }
 
         try {
             _db.cleanup();
         } catch (DBException e) {
-            e.printStackTrace();
-            e.printStackTrace(System.out);
+            //TODO make error logging level configurable
+            //e.printStackTrace();
+            //e.printStackTrace(System.out);
+            System.err.println(e);
         }
     }
 
@@ -388,8 +400,10 @@ class ClientThread extends Thread {
                                 _db.reinit();
                                 reconnectioncounter++;
                             } catch (Exception e) {
-                                e.printStackTrace();
-                                e.printStackTrace(System.out);
+                                //TODO make error logging level configurable
+                                //e.printStackTrace();
+                                //e.printStackTrace(System.out);
+                                System.err.println(e);
                             }
                         }
                     }
@@ -506,7 +520,9 @@ public class Client {
             exporter = (MeasurementsExporter) Class.forName(exporterStr).getConstructor(OutputStream.class).newInstance(out);
         } catch (Exception e) {
             System.err.println("Could not find exporter " + exporterStr + ", will use default text reporter.");
-            e.printStackTrace();
+            //TODO make error logging level configurable
+            //e.printStackTrace();
+            System.err.println(e);
             exporter = new TextMeasurementsExporter(out);
         }
         return exporter;
