@@ -50,4 +50,8 @@ workloads = {
             #'maxexecutiontime': 60000,
         },
     },
+    'G': {  #Mostly Update workload
+        'name': 'workloadg',
+        'propertyfiles': [ root + '/workloads/workloadg' ],
+    },
 }
