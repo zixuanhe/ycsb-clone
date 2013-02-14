@@ -26,8 +26,8 @@ data = {    #global YSCB properties
     'updateretrycount': 1000,
     'measurementtype': 'timeseries',
     'timeseries.granularity': 100, # Interval for reporting in ms
-    'reconnectiontime': 5000, # 5 sec limit before reconnection
-    'reconnectionthroughput': 10, #limit for reconnection.
+    #'reconnectiontime': 5000, # 5 sec limit before reconnection
+    #'reconnectionthroughput': 10, #limit for reconnection.
     #'retrydelay': 1,
     #'readallfields': 'false',
     #'writeallfields': 'false',
