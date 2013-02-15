@@ -66,6 +66,7 @@ if __name__ == "__main__":
     plt.ylabel('Latency (ms^(-1))')
 
     plt.subplot(212)
+    plt.grid(True)
     plt.plot(draw_thr[0], draw_thr[1], 'r')
     plt.xlim([min_x, max_x])
     plt.xlabel('Execution time (ms)')
