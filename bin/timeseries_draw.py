@@ -93,5 +93,5 @@ if __name__ == "__main__":
 
     fig = plt.gcf()
     fig.set_size_inches(18.5,10.5)
-    # plt.savefig('series.png',dpi=80)
-    plt.show()
+    plt.savefig('series.png',dpi=80)
+    # plt.show()
