@@ -69,7 +69,7 @@ if __name__ == "__main__":
     ax1.annotate('node down', xy=(xndown, ymax), xytext=(xndown - 300000, ymax + 10000),
                 ha='center', va='bottom',
                 bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
-                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
                                 color='red'))
     ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax + 10000),
                 ha='center', va='bottom',
@@ -93,5 +93,5 @@ if __name__ == "__main__":
 
     fig = plt.gcf()
     fig.set_size_inches(18.5,10.5)
-    plt.savefig('series.png',dpi=80)
-    # plt.show()
+    # plt.savefig('series.png',dpi=80)
+    plt.show()
