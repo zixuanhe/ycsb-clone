@@ -55,7 +55,7 @@ if __name__ == "__main__":
     min_x = min(min(drlt[0]), min(dult[0]), min(dthr[0]))
     max_x = max(max(drlt[0]), max(dult[0]), max(dthr[0]))
     xndown = 600000 # the time for node down
-    xnup = 650000   # the time for node up
+    xnup = 1200000   # the time for node up
 
     ax1 = plt.subplot(211)
     plt.grid(True)
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     plt.plot(drlt[0], drlt[1], 'b', label = 'Read latency')
     plt.plot(dult[0], dult[1], 'g', label = 'Update latency')
     plt.xlim([min_x, max_x])
-    plt.ylim([0, 5])
+    plt.ylim([0, 15])
     plt.xlabel('Execution time (ms)')
     plt.ylabel('Latency (ms)')
     fontP = FontProperties()
