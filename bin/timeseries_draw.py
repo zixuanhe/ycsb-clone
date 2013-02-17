@@ -5,6 +5,7 @@ import sys
 
 # import pkg_resources
 # pkg_resources.require("matplotlib==1.3.x")
+from matplotlib.offsetbox import TextArea, Bbox
 
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -53,25 +54,44 @@ if __name__ == "__main__":
 
     min_x = min(min(drlt[0]), min(dult[0]), min(dthr[0]))
     max_x = max(max(drlt[0]), max(dult[0]), max(dthr[0]))
+    xndown = 600000 # the time for node down
+    xnup = 650000   # the time for node up
 
-    plt.subplot(211)
+    ax1 = plt.subplot(211)
     plt.grid(True)
     plt.plot(dthr[0], dthr[1], 'r')
     plt.xlim([min_x, max_x])
     plt.xlabel('Execution time (ms)')
-    plt.ylabel('Throughput (msgs/sec)')
+    plt.ylabel('Throughput (ops/sec)')
+    (ymin, ymax) = plt.ylim()
+    ax1.axvline(x=xndown, ymin=ymin, ymax=ymax, linestyle='--')
+    ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
+    ax1.annotate('node down', xy=(xndown, ymax), xytext=(xndown - 300000, ymax + 10000),
+                ha='center', va='bottom',
+                bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
+                                color='red'))
+    ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax + 10000),
+                ha='center', va='bottom',
+                bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
+                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
+                                color='red'))
+    # ax1.text(600000, ymax, 'node down')
+    # ax1.text(650000, ymax, 'node up')
 
-    ax = plt.subplot(212)
+    ax2 = plt.subplot(212)
     plt.grid(True)
-    p1, = plt.plot(drlt[0], drlt[1], 'b', label = 'Read latency')
-    p2, = plt.plot(dult[0], dult[1], 'g', label = 'Update latency')
+    plt.plot(drlt[0], drlt[1], 'b', label = 'Read latency')
+    plt.plot(dult[0], dult[1], 'g', label = 'Update latency')
     plt.xlim([min_x, max_x])
     plt.ylim([0, 5])
     plt.xlabel('Execution time (ms)')
     plt.ylabel('Latency (ms)')
     fontP = FontProperties()
     fontP.set_size('small')
-    ax.legend(prop = fontP)
+    ax2.legend(prop = fontP)
 
+    fig = plt.gcf()
+    fig.set_size_inches(18.5,10.5)
+    plt.savefig('series.png',dpi=80)
     # plt.show()
-    plt.savefig("series.svg")
