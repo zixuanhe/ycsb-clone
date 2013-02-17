@@ -12,7 +12,7 @@ data = {    #global YSCB properties
     #'operationcount': 10000000,
     #'operationcount': 200000000,    #>10min for Aerospike and Couchbase
     #'operationcount': 50000000,    #>10min for Cassandra and MongoDB
-    'operationcount': 250000*TIME_DURATION, # 40min at 250k
+    'operationcount': 1000000*TIME_DURATION, # 40min at 1000k
     'maxexecutiontime': TIME_DURATION,      # 40min
 
     'threadcount': 32,
