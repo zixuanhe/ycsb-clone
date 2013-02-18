@@ -66,12 +66,12 @@ if __name__ == "__main__":
     (ymin, ymax) = plt.ylim()
     ax1.axvline(x=xndown, ymin=ymin, ymax=ymax, linestyle='--')
     ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
-    ax1.annotate('node down', xy=(xndown, ymax), xytext=(xndown - 300000, ymax + 10000),
+    ax1.annotate('node down', xy=(xndown, ymax), xytext=(xndown - 300000, ymax * 1.03333),
                 ha='center', va='bottom',
                 bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
                                 color='red'))
-    ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax + 10000),
+    ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax * 1.03333),
                 ha='center', va='bottom',
                 bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
