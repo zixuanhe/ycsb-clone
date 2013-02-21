@@ -43,7 +43,8 @@ def load_series(fin):
     # maybe use dict?
     return (drlt, dult, dthr)
 
-if __name__ == "__main__":
+
+def draw():
     if len(sys.argv) > 1:
         # filename passed
         with open(sys.argv[1]) as fin:
@@ -51,13 +52,12 @@ if __name__ == "__main__":
     else:
         # from stdin
         (drlt, dult, dthr) = load_series(sys.stdin)
-
     min_x = min(min(drlt[0]), min(dult[0]), min(dthr[0]))
     max_x = max(max(drlt[0]), max(dult[0]), max(dthr[0]))
     xndown = 600000 # the time for node down
     xnup = 1200000   # the time for node up
-
-    ax1 = plt.subplot(211)
+    fig = plt.figure()
+    ax1 = fig.add_subplot(211)
     plt.grid(True)
     plt.plot(dthr[0], dthr[1], 'r')
     plt.xlim([min_x, max_x])
@@ -67,31 +67,32 @@ if __name__ == "__main__":
     ax1.axvline(x=xndown, ymin=ymin, ymax=ymax, linestyle='--')
     ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
     ax1.annotate('node down', xy=(xndown, ymax), xytext=(xndown - 300000, ymax * 1.03333),
-                ha='center', va='bottom',
-                bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
-                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
-                                color='red'))
+                 ha='center', va='bottom',
+                 bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
+                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
+                                 color='red'))
     ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax * 1.03333),
-                ha='center', va='bottom',
-                bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
-                arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
-                                color='red'))
+                 ha='center', va='bottom',
+                 bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
+                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
+                                 color='red'))
     # ax1.text(600000, ymax, 'node down')
     # ax1.text(650000, ymax, 'node up')
-
-    ax2 = plt.subplot(212)
+    ax2 = fig.add_subplot(212)
     plt.grid(True)
-    plt.plot(drlt[0], drlt[1], 'b', label = 'Read latency')
-    plt.plot(dult[0], dult[1], 'g', label = 'Update latency')
+    plt.plot(drlt[0], drlt[1], 'b', label='Read latency')
+    plt.plot(dult[0], dult[1], 'g', label='Update latency')
     plt.xlim([min_x, max_x])
     plt.ylim([0, 15])
     plt.xlabel('Execution time (ms)')
     plt.ylabel('Latency (ms)')
     fontP = FontProperties()
     fontP.set_size('small')
-    ax2.legend(prop = fontP)
-
-    fig = plt.gcf()
-    fig.set_size_inches(18.5,10.5)
-    plt.savefig('series.png',dpi=80)
+    ax2.legend(prop=fontP)
+    # fig = plt.gcf()
+    fig.set_size_inches(18.5, 10.5)
+    fig.savefig('series.png', dpi=80)
     # plt.show()
+
+if __name__ == "__main__":
+    draw()
