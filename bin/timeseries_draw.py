@@ -91,7 +91,6 @@ def draw():
     fig.set_size_inches(18.5, 10.5)
     # name = "/home/nick/buffer/Aerospike/XGraphs/%s.png" % name
     name = "%s.png" % name
-    name = 'series.png'
     fig.savefig(name, dpi=80)
 
     # plt.show()
