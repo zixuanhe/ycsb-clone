@@ -3,8 +3,6 @@ import csv
 
 import sys
 
-# import pkg_resources
-# pkg_resources.require("matplotlib==1.3.x")
 from matplotlib.offsetbox import TextArea, Bbox
 
 import matplotlib.pyplot as plt
