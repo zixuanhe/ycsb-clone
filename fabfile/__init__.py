@@ -11,3 +11,6 @@ from ycsb import clean_logs   as ycsb_clean
 
 from mongodb import mongos_restart
 from mongodb import mongos_stop
+
+from aerospike import aerospike_start
+from aerospike import aerospike_stop
