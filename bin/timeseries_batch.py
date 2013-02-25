@@ -12,7 +12,7 @@ if __name__ == "__main__":
     for path in os.walk(prefix):
         # if this path is for failover_ram and has no chils, e.g.
         # '/home/nick/buffer/Aerospike/Aerospike/failover_ram/async/50_percent_max_throughput'
-        if 'failover_ram' in path[0] and len(path[1]) == 0:
+        if 'failover' in path[0] and len(path[1]) == 0:
             paths.append(path[0])
     # now the list of dirs formed, generate the pictures
     for path in paths:

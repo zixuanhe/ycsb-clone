@@ -11,47 +11,45 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
 
-def f(x, dict_to_draw):
-    dict_to_draw.get(x, 0)
-    # for p in x_range:
-    #     yield dict_to_draw.get(p, 0)
-
-
 def load_series(fin):
+
     # all series is sorted, there is no need to use dictionaries
-    drlt = [[],[]] # x and y for read latency
-    dult = [[],[]] # x and y for update latency
-    dthr = [[],[]] # x and y for throughput
+    draw_name = ""
+    draw_rd_lat = [[],[]] # x and y for read latency
+    draw_up_lat = [[],[]] # x and y for update latency
+    draw_th_put = [[],[]] # x and y for throughput
     # the block number, 0 - read, 1 - update, 2 - throughput
     # see /timeseries_merge.py:70
     block = 0
     reader = csv.reader(fin, dialect='excel-tab')
     for items in reader:
-        if len(items) < 2:
+        if len(items) == 0:
             block += 1
         else:
             if block == 0:
-                drlt[0].append(int(items[0]))
-                drlt[1].append(float(items[1]))
+                draw_name = items[0]
             elif block == 1:
-                dult[0].append(int(items[0]))
-                dult[1].append(float(items[1]))
+                draw_rd_lat[0].append(int(items[0]))
+                draw_rd_lat[1].append(float(items[1]))
+            elif block == 2:
+                draw_up_lat[0].append(int(items[0]))
+                draw_up_lat[1].append(float(items[1]))
             else:
-                dthr[0].append(int(items[0]))
-                dthr[1].append(float(items[1]))
+                draw_th_put[0].append(int(items[0]))
+                draw_th_put[1].append(float(items[1]))
     # dead birds falling from the sky...
     # maybe use dict?
-    return (drlt, dult, dthr)
+    return (draw_name, draw_rd_lat, draw_up_lat, draw_th_put)
 
 
 def draw():
     if len(sys.argv) > 1:
         # filename passed
         with open(sys.argv[1]) as fin:
-            (drlt, dult, dthr) = load_series(fin)
+            (name, drlt, dult, dthr) = load_series(fin)
     else:
         # from stdin
-        (drlt, dult, dthr) = load_series(sys.stdin)
+        (name, drlt, dult, dthr) = load_series(sys.stdin)
     min_x = min(min(drlt[0]), min(dult[0]), min(dthr[0]))
     max_x = max(max(drlt[0]), max(dult[0]), max(dthr[0]))
     xndown = 600000 # the time for node down
@@ -91,7 +89,11 @@ def draw():
     ax2.legend(prop=fontP)
     # fig = plt.gcf()
     fig.set_size_inches(18.5, 10.5)
-    fig.savefig('series.png', dpi=80)
+    # name = "/home/nick/buffer/Aerospike/XGraphs/%s.png" % name
+    name = "%s.png" % name
+    name = 'series.png'
+    fig.savefig(name, dpi=80)
+
     # plt.show()
 
 if __name__ == "__main__":

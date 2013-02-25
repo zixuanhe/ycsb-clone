@@ -6,6 +6,9 @@ import re
 
 import sys
 
+# import pkg_resources
+# print(pkg_resources.get_distribution("matplotlib").version)
+
 def avg(seq):
     return sum(seq) / float(len(seq))
 
@@ -19,6 +22,17 @@ def merge():
     update_latency = {}
     read_latency = {}
     items = filter(lambda x: str(x).endswith('.out'), os.listdir('.'))
+    # graph name is the name of items without '-ci' part, e.g.
+    # 2013-02-07_21-40_couchbase_workloada_31250
+    common_name = os.path.commonprefix(items)[:-2]
+    # remove date-time
+    m = re.search(r'\d{4}-\d{2}-\d{2}_\d+-\d+_(.+)', common_name)
+    if m is not None:
+        common_name = m.group(1)
+    the_plist = split_path(os.getcwd())
+    the_plist.append(common_name)
+    graph_name = '-'.join(map(lambda i: the_plist[i], [-4,-3,-1]))
+    # graph_name ~ 'failover_ram-async-aerospike_workloada_25000'
     # gather stats from all files=items
     for item in items:
         with open(item) as f:
@@ -54,10 +68,16 @@ def merge():
     if len(sys.argv) > 1:
         # filename passed, to filename
         with open(sys.argv[1], 'w') as f:
-            flush_series(f, read_latency, update_latency, throughput)
+            flush_series(f, graph_name, read_latency, update_latency, throughput)
     else:
         # to stdout
-        flush_series(sys.stdout, read_latency, update_latency, throughput)
+        flush_series(sys.stdout, graph_name, read_latency, update_latency, throughput)
+
+def split_path(path, maxdepth=20):
+    ( head, tail ) = os.path.split(path)
+    return split_path(head, maxdepth - 1) + [ tail ] \
+        if maxdepth and head and head != path \
+        else [ head or tail ]
 
 def avg_convert(the_dict):
     # post-processing for latencies goes here
@@ -69,11 +89,16 @@ def avg_convert(the_dict):
     return list2
 
 
-def flush_series(f, read_latency, update_latency, throughput):
+def flush_series(f, graph_name, read_latency, update_latency, throughput):
+    # write graph name as a first piece of data
+    print(graph_name, file=f)
+    print('', file=f)
+    # block with read latency
     for t in avg_convert(read_latency):
         print(tab_str(t), file=f)
         # skip line to mark the end of the block
     print('', file=f)
+    # block with update latency
     for t in avg_convert(update_latency):
         print(tab_str(t), file=f)
         # skip line to mark the end of the block
