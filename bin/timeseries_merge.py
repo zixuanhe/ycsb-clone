@@ -16,23 +16,37 @@ def same(x): return x
 
 def scale1k(x) : return x / 1000.0
 
+
+
+
 def merge():
     """grab all *.out, extract statistics from there and merge into TSV file """
     throughput = {}
     update_latency = {}
     read_latency = {}
     items = filter(lambda x: str(x).endswith('.out'), os.listdir('.'))
-    # graph name is the name of items without '-ci' part, e.g.
+    # common_name is the name of items without '-ci' part, e.g.
     # 2013-02-07_21-40_couchbase_workloada_31250
+    # then we try to cut off some parts
     common_name = os.path.commonprefix(items)[:-2]
-    # remove date-time
-    m = re.search(r'\d{4}-\d{2}-\d{2}_\d+-\d+_(.+)', common_name)
+    db_name = "unknown"
+    # remove date-time and database name, since it is already there
+    m = re.search(r'\d{4}-\d{2}-\d{2}_\d+-\d+_([^_]+)_(.+)', common_name)
     if m is not None:
-        common_name = m.group(1)
+        common_name = m.group(2)
+        db_name = m.group(1)
     the_plist = split_path(os.getcwd())
-    the_plist.append(common_name)
-    graph_name = '-'.join(map(lambda i: the_plist[i], [-4,-3,-1]))
-    # graph_name ~ 'failover_ram-async-aerospike_workloada_25000'
+    the_plist.reverse()
+    the_plist = map(lambda s: s.lower(), the_plist)
+    repl_type = find_set(["sync", "async"], the_plist, 4, "async")
+    # find in the_plist first element that contains "failover" word,
+    # usually it is "failover_ram" or "failover_ssd"
+    def contains_failover(s):
+        return 'failover' in s
+    ram_or_ssd = next((x for x in the_plist if contains_failover(x)), "failover")
+    # now combine the name of the graph
+    # graph_name ~ 'aerospike-async-failover_ram-workloada_25000'
+    graph_name = '-'.join([db_name, repl_type, ram_or_ssd, common_name, the_plist[0]])
     # gather stats from all files=items
     for item in items:
         with open(item) as f:
@@ -78,6 +92,14 @@ def split_path(path, maxdepth=20):
     return split_path(head, maxdepth - 1) + [ tail ] \
         if maxdepth and head and head != path \
         else [ head or tail ]
+
+def find_set(words, the_list, max_depth, default = ""):
+    words_set = set(words)
+    local_list = the_list[0:max_depth]
+    for word in local_list:
+        if word in words_set:
+            return word
+    return default
 
 def avg_convert(the_dict):
     # post-processing for latencies goes here
