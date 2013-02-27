@@ -18,6 +18,7 @@ def load_series(fin):
     draw_rd_lat = [[],[]] # x and y for read latency
     draw_up_lat = [[],[]] # x and y for update latency
     draw_th_put = [[],[]] # x and y for throughput
+    draw_stats = {}
     # the block number, 0 - read, 1 - update, 2 - throughput
     # see /timeseries_merge.py:70
     block = 0
@@ -34,22 +35,29 @@ def load_series(fin):
             elif block == 2:
                 draw_up_lat[0].append(int(items[0]))
                 draw_up_lat[1].append(float(items[1]))
-            else:
+            elif block == 3:
                 draw_th_put[0].append(int(items[0]))
                 draw_th_put[1].append(float(items[1]))
+            else:
+                draw_stats[items[0]] = float(items[1])
+
     # dead birds falling from the sky...
     # maybe use dict?
-    return (draw_name, draw_rd_lat, draw_up_lat, draw_th_put)
+    return (draw_name, draw_rd_lat, draw_up_lat, draw_th_put, draw_stats)
 
 
 def draw():
     if len(sys.argv) > 1:
         # filename passed
         with open(sys.argv[1]) as fin:
-            (name, drlt, dult, dthr) = load_series(fin)
+            (name, drlt, dult, dthr, stats) = load_series(fin)
     else:
         # from stdin
-        (name, drlt, dult, dthr) = load_series(sys.stdin)
+        (name, drlt, dult, dthr, stats) = load_series(sys.stdin)
+    # do not try to draw anything on empty data
+    if len(dthr[0]) == 0:
+        return name
+
     min_x = min(min(drlt[0]), min(dult[0]), min(dthr[0]))
     max_x = max(max(drlt[0]), max(dult[0]), max(dthr[0]))
     xndown = 600000 # the time for node down
@@ -63,17 +71,30 @@ def draw():
     plt.ylabel('Throughput (ops/sec)')
     (ymin, ymax) = plt.ylim()
     ax1.axvline(x=xndown, ymin=ymin, ymax=ymax, linestyle='--')
-    ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
     ax1.annotate('node down', xy=(xndown, ymax), xytext=(xndown - 300000, ymax * 1.03333),
                  ha='center', va='bottom',
                  bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                  arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
                                  color='red'))
+    ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
     ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax * 1.03333),
                  ha='center', va='bottom',
                  bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                  arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
                                  color='red'))
+    # stats
+    if len(stats) > 0:
+        for (key, value) in stats.items():
+            # don't draw zero throughput values
+            if key not in ['zt_nd', 'zt_nu']:
+                if min_x <= value <= max_x:
+                    x_text = min(value + 300000, 1900000)
+                    ax1.axvline(x=value, ymin=ymin, ymax=ymax, linestyle='--', color='green')
+                    ax1.annotate(key, xy=(value, ymax), xytext=(x_text, ymax * 1.03333),
+                                 ha='center', va='bottom',
+                                 bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
+                                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
+                                                 color='green'))
     # ax1.text(600000, ymax, 'node down')
     # ax1.text(650000, ymax, 'node up')
     ax2 = fig.add_subplot(212)
@@ -89,11 +110,9 @@ def draw():
     ax2.legend(prop=fontP)
     # fig = plt.gcf()
     fig.set_size_inches(18.5, 10.5)
-    # name = "/home/nick/buffer/Aerospike/XGraphs/%s.png" % name
-    name = "%s.png" % name
-    fig.savefig(name, dpi=80)
-
-    # plt.show()
+    fig.savefig("%s.png" % name, dpi=80)
+    # fig.show()
+    return name
 
 if __name__ == "__main__":
     draw()
