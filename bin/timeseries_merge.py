@@ -102,11 +102,12 @@ def merge():
     # but before and after node up. We count very low values as being zero
     t_node_down = 600000
     t_node_up  = 1200000
+    bound = max(throughput.values()) * 0.1
     zt_before_node_up = 0
     zt_after_node_up = 0
     for t in range(0, 2400000, 100):
         v = throughput.get(t)
-        if v is None or v < 30:
+        if v is None or v < bound:
             if t_node_down <= t < t_node_up:
                 zt_before_node_up += 100
             elif t_node_up <= t:
