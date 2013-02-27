@@ -1,3 +1,4 @@
+import csv
 import os
 import sys
 import timeseries_draw
@@ -18,10 +19,11 @@ if __name__ == "__main__":
             paths.append(path[0])
     # paths = filter(lambda s: "Aerospike26" in s, paths)
     # now the list of dirs formed, generate the pictures
+    collect = []
     for path in paths:
         os.chdir(path)
         sys.argv = ["", "series.txt"]
-        timeseries_merge.merge()
+        timeseries_merge.merge(collect)
         name = timeseries_draw.draw()
         # move this new wonderful file to XGraphs
         src_name = "%s.png" % name
@@ -31,6 +33,14 @@ if __name__ == "__main__":
         except OSError as e:
             print e
         print "done with %s" % path
+
+    with open("/home/nick/buffer/collect.txt", "w") as f:
+        cw = csv.writer(f, dialect='excel-tab')
+        for c in collect:
+            zt_nd = c[1]['zt_nd']
+            zt_nu = c[1]['zt_nu']
+            row = [c[0], zt_nd, zt_nu]
+            cw.writerow(row)
 
     # ts_merge = "/home/nick/ycsb/bin/timeseries_merge.py"
     # ts_draw  = "/home/nick/ycsb/bin/timeseries_draw.py"
