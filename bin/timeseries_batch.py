@@ -40,10 +40,11 @@ if __name__ == "__main__":
 
     with open("/home/nick/buffer/collect.txt", "w") as f:
         cw = csv.writer(f, dialect='excel-tab')
+        collect.sort(key = lambda c: c[0])
         for c in collect:
-            zt_nd = c[1]['zt_nd']
-            zt_nu = c[1]['zt_nu']
-            row = [c[0], zt_nd, zt_nu]
+            lt_nd = c[1]['_lt_nd']
+            lt_nu = c[1]['_lt_nu']
+            row = [c[0], lt_nd, lt_nu]
             cw.writerow(row)
 
     # ts_merge = "/home/nick/ycsb/bin/timeseries_merge.py"

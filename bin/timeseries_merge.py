@@ -104,17 +104,19 @@ def merge(collect = None):
     t_node_up  = 1200000
     if len(throughput) > 0:
         bound = max(throughput.values()) * 0.1
-        zt_before_node_up = 0
-        zt_after_node_up = 0
+        lt_before_node_up = 0
+        lt_after_node_up = 0
         for t in range(0, 2400000, 100):
             v = throughput.get(t)
             if v is None or v < bound:
                 if t_node_down <= t < t_node_up:
-                    zt_before_node_up += 100
+                    lt_before_node_up += 100
                 elif t_node_up <= t:
-                    zt_after_node_up += 100
-        stats['zt_nd'] = zt_before_node_up
-        stats['zt_nu'] = zt_after_node_up
+                    lt_after_node_up += 100
+        # _lt_nd (and _lt_nu) are abbreviations of
+        # Low Throughput wen Node Down (and Up)
+        stats['_lt_nd'] = lt_before_node_up
+        stats['_lt_nu'] = lt_after_node_up
         if collect is not None:
             collect.append((graph_name, stats))
     #for (timestamp, thr) in OrderedDict(sorted(throughput.items(), key=lambda t: t[0])).items():
