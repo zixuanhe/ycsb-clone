@@ -1,3 +1,4 @@
+from __future__ import print_function
 import csv
 import os
 import sys
@@ -11,6 +12,9 @@ if __name__ == "__main__":
     prefix = "/home/nick/buffer/Aerospike"
     # postfix - where the new graphs will be put
     postfix = "/home/nick/buffer/Aerospike/XGraphs/"
+    # if file paths.txt exists, then load paths from it
+    # otherwise walk over prefix dir
+
     paths = []
     for path in os.walk(prefix):
         # if this path is for failover_ram and has no chils, e.g.
@@ -31,8 +35,8 @@ if __name__ == "__main__":
         try:
             os.rename(src_name, tgt_name)
         except OSError as e:
-            print e
-        print "done with %s" % path
+            print(e)
+        print("done with %s" % path)
 
     with open("/home/nick/buffer/collect.txt", "w") as f:
         cw = csv.writer(f, dialect='excel-tab')
@@ -45,4 +49,4 @@ if __name__ == "__main__":
     # ts_merge = "/home/nick/ycsb/bin/timeseries_merge.py"
     # ts_draw  = "/home/nick/ycsb/bin/timeseries_draw.py"
     # os.system("cd %s; %s | %s" % (path, ts_merge, ts_draw))
-    print "all walking done!"
+    print("all walking done!")
