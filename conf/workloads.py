@@ -3,9 +3,9 @@ root = '/opt/ycsb'  #root of YCSB installation
 TIME_DURATION = 40*60 #40 Minutes
 
 data = {    #global YSCB properties
-    'recordcount': 200000000,  #SSD
+    #'recordcount': 200000000,  #SSD
     #'recordcount': 500000000,  #SSD
-    #'recordcount': 50000000,    #RAM
+    'recordcount': 50000000,    #RAM
     'fieldcount': 10,
     'fieldlength': 10,
     'fieldnameprefix': 'f',
@@ -35,6 +35,7 @@ data = {    #global YSCB properties
     #'readallfields': 'false',
     #'writeallfields': 'false',
     #'maxexecutiontime': 600,
+    #'mongodb.writeConcern': 'replicas_safe',#Mongo SYNC only!
 }
 
 workloads = {
