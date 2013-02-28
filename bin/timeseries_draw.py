@@ -9,47 +9,53 @@ import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
 
-def f(x, dict_to_draw):
-    dict_to_draw.get(x, 0)
-    # for p in x_range:
-    #     yield dict_to_draw.get(p, 0)
-
-
 def load_series(fin):
+
     # all series is sorted, there is no need to use dictionaries
-    drlt = [[],[]] # x and y for read latency
-    dult = [[],[]] # x and y for update latency
-    dthr = [[],[]] # x and y for throughput
+    draw_name = ""
+    draw_rd_lat = [[],[]] # x and y for read latency
+    draw_up_lat = [[],[]] # x and y for update latency
+    draw_th_put = [[],[]] # x and y for throughput
+    draw_stats = {}
     # the block number, 0 - read, 1 - update, 2 - throughput
     # see /timeseries_merge.py:70
     block = 0
     reader = csv.reader(fin, dialect='excel-tab')
     for items in reader:
-        if len(items) < 2:
+        if len(items) == 0:
             block += 1
         else:
             if block == 0:
-                drlt[0].append(int(items[0]))
-                drlt[1].append(float(items[1]))
+                draw_name = items[0]
             elif block == 1:
-                dult[0].append(int(items[0]))
-                dult[1].append(float(items[1]))
+                draw_rd_lat[0].append(int(items[0]))
+                draw_rd_lat[1].append(float(items[1]))
+            elif block == 2:
+                draw_up_lat[0].append(int(items[0]))
+                draw_up_lat[1].append(float(items[1]))
+            elif block == 3:
+                draw_th_put[0].append(int(items[0]))
+                draw_th_put[1].append(float(items[1]))
             else:
-                dthr[0].append(int(items[0]))
-                dthr[1].append(float(items[1]))
+                draw_stats[items[0]] = float(items[1])
+
     # dead birds falling from the sky...
     # maybe use dict?
-    return (drlt, dult, dthr)
+    return (draw_name, draw_rd_lat, draw_up_lat, draw_th_put, draw_stats)
 
 
 def draw():
     if len(sys.argv) > 1:
         # filename passed
         with open(sys.argv[1]) as fin:
-            (drlt, dult, dthr) = load_series(fin)
+            (name, drlt, dult, dthr, stats) = load_series(fin)
     else:
         # from stdin
-        (drlt, dult, dthr) = load_series(sys.stdin)
+        (name, drlt, dult, dthr, stats) = load_series(sys.stdin)
+    # do not try to draw anything on empty data
+    if len(dthr[0]) == 0:
+        return name
+
     min_x = min(min(drlt[0]), min(dult[0]), min(dthr[0]))
     max_x = max(max(drlt[0]), max(dult[0]), max(dthr[0]))
     xndown = 600000 # the time for node down
@@ -63,17 +69,30 @@ def draw():
     plt.ylabel('Throughput (ops/sec)')
     (ymin, ymax) = plt.ylim()
     ax1.axvline(x=xndown, ymin=ymin, ymax=ymax, linestyle='--')
-    ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
     ax1.annotate('node down', xy=(xndown, ymax), xytext=(xndown - 300000, ymax * 1.03333),
                  ha='center', va='bottom',
                  bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                  arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
                                  color='red'))
+    ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
     ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax * 1.03333),
                  ha='center', va='bottom',
                  bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
                  arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
                                  color='red'))
+    # stats
+    if len(stats) > 0:
+        for (key, value) in stats.items():
+            # don't draw zero throughput values
+            if key not in ['zt_nd', 'zt_nu']:
+                if min_x <= value <= max_x:
+                    x_text = min(value + 300000, 1900000)
+                    ax1.axvline(x=value, ymin=ymin, ymax=ymax, linestyle='--', color='green')
+                    ax1.annotate(key, xy=(value, ymax), xytext=(x_text, ymax * 1.03333),
+                                 ha='center', va='bottom',
+                                 bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
+                                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
+                                                 color='green'))
     # ax1.text(600000, ymax, 'node down')
     # ax1.text(650000, ymax, 'node up')
     ax2 = fig.add_subplot(212)
@@ -89,8 +108,9 @@ def draw():
     ax2.legend(prop=fontP)
     # fig = plt.gcf()
     fig.set_size_inches(18.5, 10.5)
-    fig.savefig('series.png', dpi=80)
-    # plt.show()
+    fig.savefig("%s.png" % name, dpi=80)
+    # fig.show()
+    return name
 
 if __name__ == "__main__":
     draw()

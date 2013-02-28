@@ -1,3 +1,4 @@
+import csv
 import os
 import sys
 import timeseries_draw
@@ -8,19 +9,38 @@ if __name__ == "__main__":
     # prefix and selects all paths that do 'failover_ram'
     # tests. For each path under the condition the graph is built
     prefix = "/home/nick/buffer/Aerospike"
+    # postfix - where the new graphs will be put
+    postfix = "/home/nick/buffer/Aerospike/XGraphs/"
     paths = []
     for path in os.walk(prefix):
         # if this path is for failover_ram and has no chils, e.g.
         # '/home/nick/buffer/Aerospike/Aerospike/failover_ram/async/50_percent_max_throughput'
-        if 'failover_ram' in path[0] and len(path[1]) == 0:
+        if 'failover' in path[0] and len(path[1]) == 0:
             paths.append(path[0])
+    # paths = filter(lambda s: "Aerospike26" in s, paths)
     # now the list of dirs formed, generate the pictures
+    collect = []
     for path in paths:
         os.chdir(path)
         sys.argv = ["", "series.txt"]
-        timeseries_merge.merge()
-        timeseries_draw.draw()
+        timeseries_merge.merge(collect)
+        name = timeseries_draw.draw()
+        # move this new wonderful file to XGraphs
+        src_name = "%s.png" % name
+        tgt_name = postfix + "%s.png" % name
+        try:
+            os.rename(src_name, tgt_name)
+        except OSError as e:
+            print e
         print "done with %s" % path
+
+    with open("/home/nick/buffer/collect.txt", "w") as f:
+        cw = csv.writer(f, dialect='excel-tab')
+        for c in collect:
+            zt_nd = c[1]['zt_nd']
+            zt_nu = c[1]['zt_nu']
+            row = [c[0], zt_nd, zt_nu]
+            cw.writerow(row)
 
     # ts_merge = "/home/nick/ycsb/bin/timeseries_merge.py"
     # ts_draw  = "/home/nick/ycsb/bin/timeseries_draw.py"
