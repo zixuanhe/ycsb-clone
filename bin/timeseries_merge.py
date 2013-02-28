@@ -24,7 +24,7 @@ def same(x): return x
 
 def scale1k(x) : return x / 1000.0
 
-def merge():
+def merge(collect = None):
     """grab all *.out, extract statistics from there and merge into TSV file """
     throughput = {}
     update_latency = {}
@@ -102,19 +102,23 @@ def merge():
     # but before and after node up. We count very low values as being zero
     t_node_down = 600000
     t_node_up  = 1200000
-    bound = max(throughput.values()) * 0.1
-    zt_before_node_up = 0
-    zt_after_node_up = 0
-    for t in range(0, 2400000, 100):
-        v = throughput.get(t)
-        if v is None or v < bound:
-            if t_node_down <= t < t_node_up:
-                zt_before_node_up += 100
-            elif t_node_up <= t:
-                zt_after_node_up += 100
-    stats['zt_nd'] = zt_before_node_up
-    stats['zt_nu'] = zt_after_node_up
-
+    if len(throughput) > 0:
+        bound = max(throughput.values()) * 0.1
+        lt_before_node_up = 0
+        lt_after_node_up = 0
+        for t in range(0, 2400000, 100):
+            v = throughput.get(t)
+            if v is None or v < bound:
+                if t_node_down <= t < t_node_up:
+                    lt_before_node_up += 100
+                elif t_node_up <= t:
+                    lt_after_node_up += 100
+        # _lt_nd (and _lt_nu) are abbreviations of
+        # Low Throughput wen Node Down (and Up)
+        stats['_lt_nd'] = lt_before_node_up
+        stats['_lt_nu'] = lt_after_node_up
+        if collect is not None:
+            collect.append((graph_name, stats))
     #for (timestamp, thr) in OrderedDict(sorted(throughput.items(), key=lambda t: t[0])).items():
     if len(sys.argv) > 1:
         # filename passed, to filename
