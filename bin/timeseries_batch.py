@@ -10,6 +10,8 @@ if __name__ == "__main__":
     # prefix and selects all paths that do 'failover_ram'
     # tests. For each path under the condition the graph is built
     prefix = "/home/nick/buffer/Aerospike"
+    # prefix = "/home/nick/buffer/Aerospike/Aerospike26NewClients"
+
     # postfix - where the new graphs will be put
     postfix = "/home/nick/buffer/Aerospike/XGraphs/"
     # if file paths.txt exists, then load paths from it

@@ -34,6 +34,7 @@ def merge(collect = None):
     # 2013-02-07_21-40_couchbase_workloada_31250
     # then we try to cut off some parts
     common_name = os.path.commonprefix(items)[:-2]
+    common_db_name = 'unknown'
     # remove date-time and database name, since it is already there
     m = re.search(r'\d{4}-\d{2}-\d{2}_\d+-\d+_([^_]+)_(.+)', common_name)
     if m is not None:
@@ -43,8 +44,7 @@ def merge(collect = None):
     the_plist.reverse()
     the_plist = map(lambda s: s.lower(), the_plist)
     # db_name try to find in dir hierarchy, if not success, then fallback
-    db_name = find_set(["aerospike", "aerospike26",
-                        "cassandra", "couchbase2", "mongo"], the_plist, 5, "unknown")
+    db_name = find_set(["aerospike", "cassandra", "couchbase2", "mongo"], the_plist, 5, common_db_name)
     repl_type = find_set(["sync", "async"], the_plist, 4, "async")
     # find in the_plist first element that contains "failover" word,
     # usually it is "failover_ram" or "failover_ssd"
@@ -140,6 +140,10 @@ def find_set(words, the_list, max_depth, default = ""):
     for word in local_list:
         if word in words_set:
             return word
+        else:
+            for w in words_set:
+                if word.startswith(w):
+                    return word
     return default
 
 def map_config(configparser, section):
