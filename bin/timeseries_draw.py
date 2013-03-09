@@ -3,7 +3,10 @@ import csv
 
 import sys
 
-from matplotlib.offsetbox import TextArea, Bbox
+# import pkg_resources
+# pkg_resources.require("matplotlib==1.3.x")
+import matplotlib as mpl
+mpl.use('Agg') # draw without X server
 
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
@@ -75,16 +78,16 @@ def draw():
                  arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
                                  color='red'))
     ax1.axvline(x=xnup, ymin=ymin, ymax=ymax, linestyle='--')
-    ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup + 300000, ymax * 1.03333),
+    ax1.annotate('node up', xy=(xnup, ymax), xytext=(xnup - 300000, ymax * 1.03333),
                  ha='center', va='bottom',
                  bbox=dict(boxstyle='round,pad=0.2', fc='yellow', alpha=0.3),
-                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=0.5',
+                 arrowprops=dict(arrowstyle='->', connectionstyle='arc3,rad=-0.5',
                                  color='red'))
     # stats
     if len(stats) > 0:
         for (key, value) in stats.items():
             # don't draw zero throughput values
-            if key not in ['zt_nd', 'zt_nu']:
+            if not key.startswith("_"):
                 if min_x <= value <= max_x:
                     x_text = min(value + 300000, 1900000)
                     ax1.axvline(x=value, ymin=ymin, ymax=ymax, linestyle='--', color='green')
