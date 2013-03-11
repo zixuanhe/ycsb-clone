@@ -25,4 +25,4 @@ for line in sys.stdin:
             index = index + 1
             results.append(0)
 
-print results[:-1]
+print "\t".join(map(str, results[:-1]))
