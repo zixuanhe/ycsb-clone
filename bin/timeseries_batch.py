@@ -94,7 +94,7 @@ if __name__ == "__main__":
     for path in paths:
         os.chdir(path)
         sys.argv = ["", "series.txt"]
-        if False:
+        if True:
             timeseries_merge.merge(collect)
             name = timeseries_draw.draw()
             # move this new wonderful file to XGraphs
