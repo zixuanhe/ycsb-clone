@@ -117,16 +117,20 @@ def merge(collect = None):
         # Low Throughput wen Node Down (and Up)
         stats['_lt_nd'] = lt_before_node_up
         stats['_lt_nu'] = lt_after_node_up
+        stats['_name'] = graph_name
         if collect is not None:
             collect.append((graph_name, stats))
     #for (timestamp, thr) in OrderedDict(sorted(throughput.items(), key=lambda t: t[0])).items():
+    # convert throughput dict to sorted list
+    thr_list = throughput.items()
+    thr_list.sort(key=lambda (x, y): x)
     if len(sys.argv) > 1:
         # filename passed, to filename
         with open(sys.argv[1], 'w') as f:
-            flush_series(f, graph_name, read_latency, update_latency, throughput, stats)
+            flush_series(f, graph_name, stats, read_latency, update_latency, thr_list)
     else:
         # to stdout
-        flush_series(sys.stdout, graph_name, read_latency, update_latency, throughput, stats)
+        flush_series(sys.stdout, graph_name, stats, read_latency, update_latency, thr_list)
 
 def split_path(path, maxdepth=20):
     ( head, tail ) = os.path.split(path)
@@ -169,29 +173,25 @@ def avg_convert(the_dict):
     return list2
 
 
-def flush_series(f, graph_name, read_latency, update_latency, throughput, stats):
-    # write graph name as a first piece of data
-    print(graph_name, file=f)
-    print('', file=f)
-    # block with read latency
-    for t in avg_convert(read_latency):
-        print(tab_str(t), file=f)
-        # skip line to mark the end of the block
-    print('', file=f)
-    # block with update latency
-    for t in avg_convert(update_latency):
-        print(tab_str(t), file=f)
-        # skip line to mark the end of the block
-    print('', file=f)
-    # sort for timeseries.draw
-    thr_list = throughput.items()
-    thr_list.sort(key=lambda (x, y): x)
-    for t in thr_list:
-        print(tab_str(t), file=f)
+def flush_series(f, graph_name, stats, read_latency, update_latency, thr_list):
+    # # write graph name as a first piece of data
+    # print(graph_name, file=f)
     # additional stats
-    print('', file=f)
+    # print('', file=f)
     for pair in stats.items():
         print(tab_str(pair), file=f)
+    # block with read latency
+    print('', file=f)
+    for t in avg_convert(read_latency):
+        print(tab_str(t), file=f)
+    # block with update latency
+    print('', file=f)
+    for t in avg_convert(update_latency):
+        print(tab_str(t), file=f)
+    # block with throughput
+    print('', file=f)
+    for t in thr_list:
+        print(tab_str(t), file=f)
 
 def tab_str(seq):
     return '\t'.join(map(str, seq))
