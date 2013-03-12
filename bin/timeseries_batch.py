@@ -95,8 +95,6 @@ if __name__ == "__main__":
         os.chdir(path)
         sys.argv = ["", "series.txt"]
         if False:
-            update_collect(collect)
-        else:
             timeseries_merge.merge(collect)
             name = timeseries_draw.draw()
             # move this new wonderful file to XGraphs
@@ -106,6 +104,8 @@ if __name__ == "__main__":
                 os.rename(src_name, tgt_name)
             except OSError as e:
                 print(e)
+        else:
+            update_collect(collect)
         print("done with %s" % path)
 
     keyz_ram = filter(lambda s: len(s) > 0, keyz_ram_str.split("\n"))

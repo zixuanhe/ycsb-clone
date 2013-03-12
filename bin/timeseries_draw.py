@@ -28,7 +28,11 @@ def load_series(fin):
             block += 1
         else:
             if block == 0:
-                draw_name = items[0]
+                # try to convert to float, and if not successs, then leave as is
+                try:
+                    draw_stats[items[0]] = float(items[1])
+                except ValueError:
+                    draw_stats[items[0]] = items[1]
             elif block == 1:
                 draw_rd_lat[0].append(int(items[0]))
                 draw_rd_lat[1].append(float(items[1]))
@@ -39,12 +43,8 @@ def load_series(fin):
                 draw_th_put[0].append(int(items[0]))
                 draw_th_put[1].append(float(items[1]))
             else:
-                # try to convert to float, and if not successs, then leave as is
-                try:
-                    draw_stats[items[0]] = float(items[1])
-                except ValueError:
-                    draw_stats[items[0]] = items[1]
-
+                pass
+    draw_name = draw_stats['_name']
     # dead birds falling from the sky...
     # maybe use dict?
     return (draw_name, draw_rd_lat, draw_up_lat, draw_th_put, draw_stats)

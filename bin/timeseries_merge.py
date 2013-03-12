@@ -127,10 +127,10 @@ def merge(collect = None):
     if len(sys.argv) > 1:
         # filename passed, to filename
         with open(sys.argv[1], 'w') as f:
-            flush_series(f, graph_name, read_latency, update_latency, thr_list, stats)
+            flush_series(f, graph_name, stats, read_latency, update_latency, thr_list)
     else:
         # to stdout
-        flush_series(sys.stdout, graph_name, read_latency, update_latency, thr_list, stats)
+        flush_series(sys.stdout, graph_name, stats, read_latency, update_latency, thr_list)
 
 def split_path(path, maxdepth=20):
     ( head, tail ) = os.path.split(path)
@@ -173,9 +173,13 @@ def avg_convert(the_dict):
     return list2
 
 
-def flush_series(f, graph_name, read_latency, update_latency, thr_list, stats):
-    # write graph name as a first piece of data
-    print(graph_name, file=f)
+def flush_series(f, graph_name, stats, read_latency, update_latency, thr_list):
+    # # write graph name as a first piece of data
+    # print(graph_name, file=f)
+    # additional stats
+    print('', file=f)
+    for pair in stats.items():
+        print(tab_str(pair), file=f)
     # block with read latency
     print('', file=f)
     for t in avg_convert(read_latency):
@@ -188,10 +192,6 @@ def flush_series(f, graph_name, read_latency, update_latency, thr_list, stats):
     print('', file=f)
     for t in thr_list:
         print(tab_str(t), file=f)
-    # additional stats
-    print('', file=f)
-    for pair in stats.items():
-        print(tab_str(pair), file=f)
 
 def tab_str(seq):
     return '\t'.join(map(str, seq))
