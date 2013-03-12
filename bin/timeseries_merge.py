@@ -177,7 +177,7 @@ def flush_series(f, graph_name, stats, read_latency, update_latency, thr_list):
     # # write graph name as a first piece of data
     # print(graph_name, file=f)
     # additional stats
-    print('', file=f)
+    # print('', file=f)
     for pair in stats.items():
         print(tab_str(pair), file=f)
     # block with read latency
