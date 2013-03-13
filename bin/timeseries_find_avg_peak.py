@@ -2,14 +2,19 @@
 
 import sys
 
-PEAK_BOTTOM = 10
+begin = int(sys.argv[1])
+end = int(sys.argv[2])
+print "between %i and %i" % (begin, end)
+
+threshold = float(sys.argv[3])
+print "averaging over %f" % (threshold)
 
 def avg_peak(values):
     sum = 0
     count = 0
     #print '---'
     for value in values:
-        if value > PEAK_BOTTOM:
+        if value > threshold:
             #print value
             sum += value
             count += 1
@@ -17,9 +22,7 @@ def avg_peak(values):
         return 0
     return sum / count
 
-begin = int(sys.argv[1])
-end = int(sys.argv[2])
-print "between %i and %i" % (begin, end)
+
 
 results = []
 index = 0
@@ -32,6 +35,7 @@ for line in sys.stdin:
             continue
         time = int(values[0])
         if time >= begin and time <= end:
+            #print values
             value = float(values[1])
             results[index].append(value)
         if time > end and len(results[index]) != 0:
