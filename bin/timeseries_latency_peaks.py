@@ -55,7 +55,7 @@ def threshold(average):
     return average * 10.0
 
 
-join_time = 600000
+join_time = 1200000
 
 try:
     with open('stats.conf') as csvfile:
@@ -72,11 +72,13 @@ intervals = [
     [
         Interval(1000, 500000),     #initial read
         Interval(500000, 700000),   #read on node down
+        Interval(1100000, 1300000),   #read on node up
         Interval(join_time - 100000, join_time + 100000),   #read on node join
     ],
     [
         Interval(1000, 500000),     #initial write
         Interval(500000, 700000),   #write on node down
+        Interval(1100000, 1300000),   #write on node up
         Interval(join_time - 100000, join_time + 100000),   #write on node join
     ]
 ]
@@ -99,10 +101,10 @@ with open('series.txt') as csvfile:
             for interval in current_intervals:
                 interval.add(time, value)
             if current_intervals[1].threshold() == 0 and current_intervals[0].completed():
-                current_intervals[1].threshold(threshold(current_intervals[0].average()))
-                current_intervals[2].threshold(threshold(current_intervals[0].average()))
+                for interval in current_intervals[1:]:
+                    interval.threshold(threshold(current_intervals[0].average()))
 
-for i in xrange(0, 3):
+for i in xrange(0, 4):
     read_interval = intervals[0][i]
     write_interval = intervals[1][i]
     print
