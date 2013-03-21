@@ -82,7 +82,7 @@ echo '/opt/couchbase/bin/couchbase-cli rebalance' >> /run/shm/at.log; \
     'cassandra' : {
         'name': 'cassandra',
         'home': '/root/ycsb',
-        'command': 'cassandra-10',
+        'command': 'cassandra-hector',
         'properties': {
             'hosts': 'e1.citrusleaf.local,e2.citrusleaf.local,e3.citrusleaf.local,e4.citrusleaf.local',
             'cassandra.readconsistencylevel': 'ONE',
