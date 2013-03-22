@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+
+import sys
+from subprocess import Popen
+from subprocess import PIPE
+
+def listCFkeys():
+    for line in Popen(['/opt/cassandra/bin/nodetool', 'cfstats'], stdout=PIPE).stdout:
+        line = line.strip()
+        try:
+            if line.startswith('Keyspace:'):
+                keyspace = line.split(':')[1].strip()
+            if line.startswith('Column Family:'):
+                columnfamily = line.split(':')[1].strip()
+            if line.startswith('Number of Keys (estimate):'):
+                keys = int(line.split(':')[1].strip())
+                yield (keyspace, columnfamily, keys)
+        except:
+            pass
+
+def doConfig():
+    print "graph_title Cassandra Number of Keys (estimate)"
+    print "graph_vlabel keys"
+    print "graph_category Cassandra"
+    for cf in listCFkeys():
+        print 'cassandra_columnfamily_{0}_{1}_number_of_keys.label {0}.{1}'.format(*cf)
+
+def doData():
+    for cf in listCFkeys():
+        print 'cassandra_columnfamily_{0}_{1}_number_of_keys.value {2}'.format(*cf)
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "config":
+        doConfig()
+    else:
+        doData()
