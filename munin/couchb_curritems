@@ -1,0 +1,18 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Couchbase current items
+graph_vlabel Items
+curitem.label Current total items 
+totitem.label Total
+graph_category Couchbase
+EOM
+        exit 0;;
+esac
+
+echo -n "curitem.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep curr_items | head -n 1 | tr ':' ' ' | awk '{print $2}'
+echo -n "totitem.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep curr_items_tot | tr ':' ' ' | awk '{print $2}'

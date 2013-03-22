@@ -1,0 +1,19 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Aerospike r/w reqs
+aeroreadreqs.label Read
+aeroreadreqs.type COUNTER
+aerowritereqs.label Write
+aerowritereqs.type COUNTER
+graph_category Aerospike
+EOM
+        exit 0;;
+esac
+
+echo -n "aeroreadreqs.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep stat_read_reqs | tr '=' ' ' | awk '{print $2}'
+echo -n "aerowritereqs.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep stat_write_reqs | head -n 1 | tr '=' ' ' | awk '{print $2}'

@@ -1,0 +1,16 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Couchbase current connections
+graph_vlabel Number
+curconnect.label Connections
+graph_category Couchbase
+EOM
+        exit 0;;
+esac
+
+echo -n "curconnect.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep curr_connections | tr ':' ' ' | awk '{print $2}'
+

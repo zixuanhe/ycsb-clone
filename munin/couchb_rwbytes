@@ -1,0 +1,20 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Couchbase r/w bytes
+graph_vlabel Size
+couchread.type COUNTER
+couchread.label Read
+couchwrite.type COUNTER
+couchwrite.label Written
+graph_category Couchbase
+EOM
+        exit 0;;
+esac
+
+echo -n "couchread.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep bytes_read | tr ':' ' ' | awk '{print $2}'
+echo -n "couchwrite.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep bytes_written | tr ':' ' ' | awk '{print $2}'

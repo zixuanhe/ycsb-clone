@@ -1,0 +1,15 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Cassandra key and row recent hitrate
+org_apache_cassandra_db_caches_keycacherecenthitrate.label Key cache recent
+org_apache_cassandra_db_caches_rowcacherecenthitrate.label Write row cache recent
+graph_category Cassandra
+EOM
+        exit 0;;
+esac
+
+java -jar /usr/share/munin/plugins/jmx2munin.jar -url service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi -query "org.apache.cassandra.*:*" -attribute org_apache_cassandra_db_caches_keycacherecenthitrate
+java -jar /usr/share/munin/plugins/jmx2munin.jar -url service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi -query "org.apache.cassandra.*:*" -attribute org_apache_cassandra_db_caches_rowcacherecenthitrate

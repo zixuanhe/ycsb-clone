@@ -1,0 +1,15 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Aerospike client connections
+graph_vlabel Number of connections
+aeroclient.label Clients
+graph_category Aerospike
+EOM
+        exit 0;;
+esac
+
+echo -n "aeroclient.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep client_connections | tr '=' ' ' | awk '{print $2}'

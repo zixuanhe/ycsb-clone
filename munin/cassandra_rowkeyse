@@ -1,0 +1,19 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Cassandra row/key size and entries
+org_apache_cassandra_db_caches_rowcachesize.label Row chache size
+org_apache_cassandra_db_caches_rowcacheentries.label Row chache entries
+org_apache_cassandra_db_caches_keycachesize.label Key cache size
+org_apache_cassandra_db_caches_keycacheentries.label Key cache entries
+graph_category Cassandra
+EOM
+        exit 0;;
+esac
+
+java -jar /usr/share/munin/plugins/jmx2munin.jar -url service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi -query "org.apache.cassandra.*:*" -attribute org_apache_cassandra_db_caches_rowcachesize
+java -jar /usr/share/munin/plugins/jmx2munin.jar -url service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi -query "org.apache.cassandra.*:*" -attribute org_apache_cassandra_db_caches_rowcacheentries
+java -jar /usr/share/munin/plugins/jmx2munin.jar -url service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi -query "org.apache.cassandra.*:*" -attribute org_apache_cassandra_db_caches_keycachesize
+java -jar /usr/share/munin/plugins/jmx2munin.jar -url service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi -query "org.apache.cassandra.*:*" -attribute org_apache_cassandra_db_caches_keycacheentries

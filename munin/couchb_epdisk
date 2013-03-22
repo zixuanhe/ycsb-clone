@@ -1,0 +1,19 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Couchbase diskqueue
+epdrain.type COUNTER
+epdrain.label Drain
+epfill.type COUNTER
+epfill.label Fill
+graph_category Couchbase
+EOM
+        exit 0;;
+esac
+
+echo -n "epdrain.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep ep_diskqueue_drain | tr ':' ' ' | awk '{print $2}'
+echo -n "epfill.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep ep_diskqueue_fill | tr ':' ' ' | awk '{print $2}'
