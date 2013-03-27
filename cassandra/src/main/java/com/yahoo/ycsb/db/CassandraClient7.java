@@ -435,9 +435,10 @@ public class CassandraClient7 extends DB
         for (Map.Entry<String, ByteIterator> entry : values.entrySet())
         {
           column = new ColumnOrSuperColumn();
-          column.setColumn( new Column( ByteBuffer.wrap(entry.getKey().getBytes("UTF-8")), 
-                                        ByteBuffer.wrap(entry.getValue().toArray()),
-                                        System.currentTimeMillis()) );
+          Column subColumn = new Column(ByteBuffer.wrap(entry.getKey().getBytes("UTF-8")));
+          subColumn.setValue(ByteBuffer.wrap(entry.getValue().toArray()));
+          subColumn.setTimestamp(System.currentTimeMillis());
+          column.setColumn(subColumn);
                                         
           mutations.add(new Mutation().setColumn_or_supercolumn(column));
         }

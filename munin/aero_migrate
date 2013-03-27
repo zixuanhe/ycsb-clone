@@ -1,0 +1,17 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Migrate progress
+aeromigsend.label Send
+aeromigrecv.label Recived
+graph_category Aerospike
+EOM
+        exit 0;;
+esac
+
+echo -n "aeromigsend.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep migrate_progress_send | tr '=' ' ' | awk '{print $2}'
+echo -n "aeromigrecv.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep migrate_progress_recv | tr '=' ' ' | awk '{print $2}'

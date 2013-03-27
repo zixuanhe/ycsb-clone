@@ -1,0 +1,15 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Couchbase memory used
+graph_vlabel Used
+couchmem.label Memory
+graph_category Couchbase
+EOM
+        exit 0;;
+esac
+
+echo -n "couchmem.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep mem_used | tr ':' ' ' | awk '{print $2}'

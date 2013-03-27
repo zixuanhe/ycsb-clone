@@ -1,0 +1,19 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Aerospike free disk and memory usage
+graph_vlabel Free %
+graph_args --upper-limit 100 -l 0\n
+aeropctdisk.label Disk
+aeropctmem.label Memory
+graph_category Aerospike
+EOM
+        exit 0;;
+esac
+
+echo -n "aeropctdisk.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep free-pct-disk | tr '=' ' ' | awk '{print $2}'
+echo -n "aeropctmem.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep free-pct-memory | tr '=' ' ' | awk '{print $2}'

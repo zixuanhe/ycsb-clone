@@ -1,6 +1,5 @@
 #!/usr/bin/python
 import csv
-
 import sys
 
 # import pkg_resources
@@ -113,9 +112,10 @@ def draw():
     fontP.set_size('small')
     ax2.legend(prop=fontP)
     # fig = plt.gcf()
+    # fig.show()
     fig.set_size_inches(18.5, 10.5)
     fig.savefig(file_name_with_ext(name), dpi=300)
-    # fig.show()
+    plt.close('all')
     return name
 
 def file_name_with_ext(name):

@@ -1,0 +1,18 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Aerospike used bytes disk and bytes memory
+graph_vlabel Size
+aerobytesdisk.label Used bytes disk
+aerobytesmem.label Used bytes memory
+graph_category Aerospike
+EOM
+        exit 0;;
+esac
+
+echo -n "aerobytesdisk.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep used-bytes-disk | tr '=' ' ' | awk '{print $2}'
+echo -n "aerobytesmem.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep used-bytes-memory | tr '=' ' ' | awk '{print $2}'

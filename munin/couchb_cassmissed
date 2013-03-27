@@ -1,0 +1,15 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Couchbase cas misses
+graph_vlabel Cas
+casmisses.label Misses
+graph_category Couchbase
+EOM
+        exit 0;;
+esac
+
+echo -n "casmisses.value "
+/opt/couchbase/bin/cbstats localhost:11210 -b test all | grep cas_misses | tr ':' ' ' | awk '{print $2}'

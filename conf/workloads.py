@@ -15,6 +15,7 @@ data = {    #global YSCB properties
     
     'operationcount': 1000000*TIME_DURATION, # 40min at 1000k
     'maxexecutiontime': TIME_DURATION,      # 40min
+    #'maxexecutiontime': 600,      # 10min
 
     'threadcount': 32,
     'workload': 'com.yahoo.ycsb.workloads.CoreWorkload',

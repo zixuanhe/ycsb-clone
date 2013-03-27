@@ -1,0 +1,14 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Cassandra livenodes size
+graph_vlabel Size
+org_apache_cassandra_db_storageservice_livenodes_size.label Nodes
+graph_category Cassandra
+EOM
+        exit 0;;
+esac
+
+java -jar /usr/share/munin/plugins/jmx2munin.jar -url service:jmx:rmi:///jndi/rmi://localhost:7199/jmxrmi -query "org.apache.cassandra.*:*" -attribute org_apache_cassandra_db_storageservice_livenodes_size | head -n 1

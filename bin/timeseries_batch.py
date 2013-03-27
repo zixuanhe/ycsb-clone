@@ -4,6 +4,35 @@ import os
 import sys
 import timeseries_draw
 import timeseries_merge
+from guppy import hpy
+
+def update_collect(collect):
+    draw_name = ''
+    draw_stats = {}
+    with open(sys.argv[1]) as fin:
+        block = 0
+        reader = csv.reader(fin, dialect='excel-tab')
+        for items in reader:
+            if len(items) == 0:
+                block += 1
+            else:
+                if block == 0:
+                    draw_name = items[0]
+                elif block == 1:
+                    pass
+                elif block == 2:
+                    pass
+                elif block == 3:
+                    pass
+                else:
+                    # try to convert to float, and if not successs, then leave as is
+                    try:
+                        draw_stats[items[0]] = float(items[1])
+                    except ValueError:
+                        draw_stats[items[0]] = items[1]
+        if len(draw_stats) > 0:
+            collect.append((draw_name, draw_stats))
+            # this script goes over all dirs and subdirs under
 
 keyz_ram_str = """
 aerospike26newclientspersistenceondevice-sync-failover_ram-workloada_12500-50_percent_max_throughput
@@ -42,40 +71,12 @@ aerospike26newclientswithoutretry-async-failover_ram-workloada_12500-50_percent_
 aerospike26newclientswithoutretry-sync-failover_ram-workloada_12500-50_percent_max_throughput
 """
 
-
-def update_collect(collect):
-    draw_name = ''
-    draw_stats = {}
-    with open(sys.argv[1]) as fin:
-        block = 0
-        reader = csv.reader(fin, dialect='excel-tab')
-        for items in reader:
-            if len(items) == 0:
-                block += 1
-            else:
-                if block == 0:
-                    draw_name = items[0]
-                elif block == 1:
-                    pass
-                elif block == 2:
-                    pass
-                elif block == 3:
-                    pass
-                else:
-                    # try to convert to float, and if not successs, then leave as is
-                    try:
-                        draw_stats[items[0]] = float(items[1])
-                    except ValueError:
-                        draw_stats[items[0]] = items[1]
-        if len(draw_stats) > 0:
-            collect.append((draw_name, draw_stats))
-
 if __name__ == "__main__":
-    # this script goes over all dirs and subdirs under
+
     # prefix and selects all paths that do 'failover_ram'
     # tests. For each path under the condition the graph is built
+    # prefix = "/home/nick/buffer/Aerospike/Aerospike26NewClients"
     prefix = "/home/nick/buffer/Aerospike/"
-    # prefix = "/home/nick/buffer/Aerospike/Aerospike26NewClients/"
 
     # postfix - where the new graphs will be put
     postfix = "/home/nick/buffer/Aerospike/XGraphs/"
@@ -90,23 +91,27 @@ if __name__ == "__main__":
             paths.append(path[0])
     # paths = filter(lambda s: "Aerospike26" in s, paths)
     # now the list of dirs formed, generate the pictures
+    h = hpy()
     collect = []
     for path in paths:
+        if path == '/home/nick/buffer/Aerospike/Aerospike26NewClients/failover_ram/sync/50_percent_max_throughput':
+            print('here')
         os.chdir(path)
         sys.argv = ["", "series.txt"]
         if True:
-            timeseries_merge.merge(collect)
-            name = timeseries_draw.draw()
-            # move this new wonderful file to XGraphs
-            src_name = timeseries_draw.file_name_with_ext(name)
-            tgt_name = postfix + src_name
             try:
+                timeseries_merge.merge(collect)
+                name = timeseries_draw.draw()
+                # move this new wonderful file to XGraphs
+                src_name = timeseries_draw.file_name_with_ext(name)
+                tgt_name = postfix + src_name
                 os.rename(src_name, tgt_name)
-            except OSError as e:
-                print(e)
+            except:
+                print(sys.exc_info()[0], file=sys.stderr)
         else:
             update_collect(collect)
         print("done with %s" % path)
+        # print("memory = %s" % h.heap())
 
     keyz_ram = filter(lambda s: len(s) > 0, keyz_ram_str.split("\n"))
     with open("/home/nick/buffer/collect.txt", "w") as f:
@@ -137,4 +142,3 @@ if __name__ == "__main__":
     # ts_draw  = "/home/nick/ycsb/bin/timeseries_draw.py"
     # os.system("cd %s; %s | %s" % (path, ts_merge, ts_draw))
     print("all walking done!")
-

@@ -1,0 +1,29 @@
+#!/bin/sh
+
+case $1 in
+   config)
+        cat <<'EOM'
+graph_title Aerospike objects
+aerobject.label Objects
+aerobject.draw AREA
+aerobject.min 0
+aerobject.type GAUGE
+aeroevicobj.label Stat evicted objects
+aeroevicobj.draw STACK
+aeroevicobj.min 0
+aeroevicobj.type COUNTER
+aerodefrag.label Storage defrag records
+aerodefrag.draw STACK
+aerodefrag.min 0
+aerodefrag.type GAUGE
+graph_category Aerospike
+EOM
+        exit 0;;
+esac
+
+echo -n "aerobject.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep object | head -n 1| tr '=' ' ' | awk '{print $2}'
+echo -n "aeroevicobj.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep stat_evicted_objects | head -n 1| tr '=' ' ' | awk '{print $2}'
+echo -n "aerodefrag.value "
+clinfo | grep statistics -A 2 | tr ";" "\n" | grep storage_defrag_records | head -n 1| tr '=' ' ' | awk '{print $2}'
