@@ -67,8 +67,16 @@ def merge(collect = None):
             stats = map_config(config_parser, "Dummy")
     except: # IOError
         stats = {}
+    
     # gather stats from all files=items
     for item in items:
+        correction_time = 0
+        #correction_time is correction about ycsb client's delay
+        #c[1-8].correction.cfg contains positive or negative int correction time in ms
+        #with open("%s.correction.cfg" % item[-6:-4]) as cf:
+        #    correction_time = int(cf.read())
+
+
         with open(item) as f:
             for line in f:
                 if line.startswith('[UPDATE]') or line.startswith('[READ]'):
@@ -76,8 +84,6 @@ def merge(collect = None):
                     if len(items) == 4:
                         (op, timestamp, lat, thr) = items
                         timestamp = int(timestamp)
-                        #if timestamp == 0:
-                        #   print items
                         lat = float(lat) / 1000.0
                         thr = thr.strip().split(' ', 1)[0]
                         try:
@@ -85,8 +91,19 @@ def merge(collect = None):
                         except ValueError:
                             #For "[UPDATE], 1575400, 16432.262857142858, 5250.0Reconnecting to the DB..." line
                             thr = float(re.search('\d+\.\d+', thr).group(0))
+                        
+                        timestamp = timestamp - correction_time
+                        #To avoid negative time
+                        if timestamp < 0:
+                            timestamp = 0
+
                         thr_stats = throughput.get(timestamp, 0)
                         thr_stats += thr
+                        
+                        #To avoid cumulative throughput on 0 time point 
+                        if timestamp == 0:
+                            thr_stats = 0
+                             
                         throughput[timestamp] = thr_stats
                         # default latensy 0 will not work properly
                         # hence this statement is totally wrong:

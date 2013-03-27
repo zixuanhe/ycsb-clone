@@ -1,6 +1,6 @@
 root = '/opt/ycsb'  #root of YCSB installation
 
-TIME_DURATION = 40*60 #40 Minutes
+TIME_DURATION = 60*40 #40 Minutes
 
 data = {    #global YSCB properties
     #'recordcount': 200000000,  #SSD
@@ -30,12 +30,13 @@ data = {    #global YSCB properties
     'measurementtype': 'timeseries',
     'timeseries.granularity': 100, # Interval for reporting in ms
     #'reconnectiontime': 5000, # 5 sec limit before reconnection
-    #'reconnectionthroughput': 10, #limit for reconnection.
+    'reconnectionthroughput': 10, #limit for reconnection.
     #'retrydelay': 1,
     #'readallfields': 'false',
     #'writeallfields': 'false',
     #'maxexecutiontime': 600,
     #'mongodb.writeConcern': 'replicas_safe',#Mongo SYNC only!
+    'reconnectiontime': 1000,
 }
 
 workloads = {

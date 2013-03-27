@@ -155,7 +155,9 @@ def get_log(db, regex='.*', do=False):
                     bz2_full_local = '%s/%s-dir.bz2' % (tempdir_local, f0)
                     # packing
                     print blue('c%s packing ...' % cn)
-                    run('tar -jcvf %s %s' % (bz2_remote, f0))
+                    #run('tar -jcvf %s %s' % (bz2_remote, f0))
+                    #To ignore huge err files.
+                    run('tar -jcvf %s %s/*.out' % (bz2_remote, f0))
                     # download them
                     print blue('c%s transferring to %s...' % (cn, tempdir_local))
                     get(bz2_remote, bz2_full_local)

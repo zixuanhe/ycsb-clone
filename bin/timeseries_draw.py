@@ -114,7 +114,7 @@ def draw():
     ax2.legend(prop=fontP)
     # fig = plt.gcf()
     fig.set_size_inches(18.5, 10.5)
-    fig.savefig(file_name_with_ext(name), dpi=150)
+    fig.savefig(file_name_with_ext(name), dpi=300)
     # fig.show()
     return name
 
