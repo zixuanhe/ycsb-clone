@@ -109,6 +109,15 @@ sleep 3; \
         },
     },
 
+    'hbase' : {
+        'name': 'hbase',
+        'home': '/run/shm',
+        'command': 'hbase',
+        'properties': {
+        }
+    },
+
+
     'basic' : { #fake database
         'name': 'basic',
         'home': '/run/shm',
