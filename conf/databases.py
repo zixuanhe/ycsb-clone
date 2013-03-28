@@ -114,6 +114,7 @@ sleep 3; \
         'home': '/run/shm',
         'command': 'hbase',
         'properties': {
+            'columnfamily': 'family',
         }
     },
 
