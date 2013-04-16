@@ -109,6 +109,16 @@ sleep 3; \
         },
     },
 
+    'hbase' : {
+        'name': 'hbase',
+        'home': '/run/shm',
+        'command': 'hbase',
+        'properties': {
+            'columnfamily': 'family',
+        }
+    },
+
+
     'basic' : { #fake database
         'name': 'basic',
         'home': '/run/shm',
