@@ -1,6 +1,8 @@
 Yahoo! Cloud System Benchmark (YCSB)
 ====================================
 
+# This project is no longer supported by Thumbtack Technology.
+
 This version of the YCSB tool is modified by Thumbtack Technology to add 
 support for Aerospike and Couchbase databases, to improve MongoDB driver 
 and to add some automation to run YCSB on multiple clients.
