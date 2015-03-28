@@ -21,21 +21,24 @@
  * limitations under the License.
  */
 -->
+
+
+
 <configuration>
-  <property>
-    <name>hbase.rootdir</name>
-    <value>hdfs://r1.citrusleaf.local:20001/hbase</value>
-    <description>The directory shared by region servers.
-    </description>
-  </property>
-  <property>
-    <name>hbase.master</name>
-    <value>r1.citrusleaf.local:60000</value>
-    <description>The host and port that the HBase master runs at.
-    </description>
-  </property>
-  <property>
-    <name>hbase.zookeeper.quorum</name>
-    <value>r1.citrusleaf.local</value>
-  </property>
+    <property>
+        <name>fs.hdfs.impl</name>
+        <value>org.apache.hadoop.hdfs.DistributedFileSystem</value>
+    </property>
+    <property>
+        <name>hbase.rootdir</name>
+        <value>hdfs://172.17.2.193:8020/hbase</value>
+    </property>
+    <property>
+        <name>hbase.master</name>
+        <value>172.17.2.222:60000</value>
+    </property>
+   <property>
+        <name>hbase.zookeeper.quorum</name>
+        <value>172.17.2.222</value>
+   </property>
 </configuration>

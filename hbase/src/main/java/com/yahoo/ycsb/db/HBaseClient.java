@@ -30,7 +30,6 @@ import java.util.*;
 //import java.util.Set;
 //import java.util.Vector;
 
-import com.yahoo.ycsb.measurements.Measurements;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.HTable;
@@ -97,16 +96,10 @@ public class HBaseClient extends com.yahoo.ycsb.DB
      */
     public void cleanup() throws DBException
     {
-        // Get the measurements instance as this is the only client that should
-        // count clean up time like an update since autoflush is off.
-        Measurements _measurements = Measurements.getMeasurements();
         try {
-            long st=System.nanoTime();
             if (_hTable != null) {
                 _hTable.flushCommits();
             }
-            long en=System.nanoTime();
-            _measurements.measure("UPDATE", (int)((en-st)/1000));
         } catch (IOException e) {
             throw new DBException(e);
         }
@@ -145,7 +138,8 @@ public class HBaseClient extends com.yahoo.ycsb.DB
             }
             catch (IOException e)
             {
-                System.err.println("Error accessing HBase table: "+e);
+                //System.err.println("Error accessing HBase table: "+e);
+                System.err.println("Error accessing HBase table (" +table+ "): "+e);
                 return ServerError;
             }
         }
@@ -213,7 +207,8 @@ public class HBaseClient extends com.yahoo.ycsb.DB
             }
             catch (IOException e)
             {
-                System.err.println("Error accessing HBase table: "+e);
+                //System.err.println("Error accessing HBase table: "+e);
+                System.err.println("Error accessing HBase table (" +table+ "): "+e);
                 return ServerError;
             }
         }
@@ -304,7 +299,7 @@ public class HBaseClient extends com.yahoo.ycsb.DB
             }
             catch (IOException e)
             {
-                System.err.println("Error accessing HBase table: "+e);
+                System.err.println("Error accessing HBase table (" +table+ "): "+e);
                 return ServerError;
             }
         }
@@ -376,7 +371,8 @@ public class HBaseClient extends com.yahoo.ycsb.DB
             }
             catch (IOException e)
             {
-                System.err.println("Error accessing HBase table: "+e);
+                //System.err.println("Error accessing HBase table: "+e);
+                System.err.println("Error accessing HBase table (" +table+ "): "+e);
                 return ServerError;
             }
         }
