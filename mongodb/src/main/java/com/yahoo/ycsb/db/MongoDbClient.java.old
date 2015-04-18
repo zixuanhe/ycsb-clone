@@ -15,6 +15,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.Map;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.mongodb.*;
 
@@ -22,6 +23,7 @@ import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.StringByteIterator;
+import com.yahoo.ycsb.ByteArrayByteIterator;
 
 /**
  * MongoDB client for YCSB framework.
@@ -55,6 +57,13 @@ import com.yahoo.ycsb.StringByteIterator;
  */
 public class MongoDbClient extends DB {
 
+    /** Used to include a field in a response. */
+    protected static final Integer INCLUDE = Integer.valueOf(1);
+    
+    /** Count the number of times initialized to teardown on the last {@link #cleanup()}. */
+    private static final AtomicInteger initCount = new AtomicInteger(0);
+
+
     Mongo mongo;
     WriteConcern writeConcern;
     ReadPreference readPreference;
@@ -66,6 +75,9 @@ public class MongoDbClient extends DB {
      * Called once per DB instance; there is one DB instance per client thread.
      */
     public void init() throws DBException {
+        initCount.incrementAndGet();
+        synchronized (INCLUDE) {
+
         // initialize MongoDb driver
         Properties props = getProperties();
         String url = props.getProperty("mongodb.url", "mongodb://localhost:27017");
@@ -210,7 +222,7 @@ public class MongoDbClient extends DB {
             e1.printStackTrace();
             return;
         }
-
+        }
     }
     
     @Override
@@ -218,8 +230,8 @@ public class MongoDbClient extends DB {
 	 * Cleanup any state for this DB.
 	 * Called once per DB instance; there is one DB instance per client thread.
 	 */
-	public void cleanup() throws DBException
-	{
+	public void cleanup() throws DBException {
+        if (initCount.decrementAndGet() <= 0) {
         try {
         	mongo.close();
         } catch (Exception e1) {
@@ -228,6 +240,7 @@ public class MongoDbClient extends DB {
                             + e1.toString());
             e1.printStackTrace();
             return;
+        }
         }
 	}
 
@@ -310,8 +323,6 @@ public class MongoDbClient extends DB {
         */
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
     /**
      * Read a record from the database. Each field/value pair from the result will be stored in a HashMap.
      *
@@ -321,12 +332,13 @@ public class MongoDbClient extends DB {
      * @param result A HashMap of field/value pairs for the result
      * @return Zero on success, a non-zero error code on error or "not found".
      */
+    @Override
+    @SuppressWarnings("unchecked")
     public int read(String table, String key, Set<String> fields,
             HashMap<String, ByteIterator> result) {
         com.mongodb.DB db = null;
         try {
             db = mongo.getDB(database);
-
 
             DBCollection collection = db.getCollection(table);
             DBObject q = new BasicDBObject().append("_id", key);
@@ -337,7 +349,8 @@ public class MongoDbClient extends DB {
             if (!returnAllFields) {
                 Iterator<String> iter = fields.iterator();
                 while (iter.hasNext()) {
-                    fieldsToReturn.put(iter.next(), 1);
+                    fieldsToReturn.put(iter.next(), INCLUDE);
+                    //fieldsToReturn.put(iter.next(), 1);
                 }
                 queryResult = collection.findOne(q, fieldsToReturn, readPreference);
             } else {
@@ -457,7 +470,23 @@ public class MongoDbClient extends DB {
             }
         }
         */
+    }
 
+    /**
+     * TODO - Finish
+     *
+     * @param resultMap
+     * @param obj
+     */
+    @SuppressWarnings("unchecked")
+    protected void fillMap(HashMap<String, ByteIterator> resultMap, DBObject obj) {
+        Map<String, Object> objMap = obj.toMap();
+        for (Map.Entry<String, Object> entry : objMap.entrySet()) {
+            if (entry.getValue() instanceof byte[]) {
+                resultMap.put(entry.getKey(), new ByteArrayByteIterator(
+                        (byte[]) entry.getValue()));
+            }
+        }
     }
 }
 
