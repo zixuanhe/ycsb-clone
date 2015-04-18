@@ -25,10 +25,12 @@ import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.Mongo;
-import com.mongodb.MongoOptions;
+import com.mongodb.MongoClientOptions;
 import com.mongodb.ReadPreference;
 import com.mongodb.WriteConcern;
 import com.mongodb.WriteResult;
+import com.mongodb.*;
+
 import com.yahoo.ycsb.ByteArrayByteIterator;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
@@ -69,7 +71,7 @@ import com.yahoo.ycsb.DBException;
  * Properties to set: 
  * 
  * mongodb.url=mongodb://localhost:27017 mongodb.database=ycsb 
- * mongodb.writeConcern= acknowledged
+ * mongodb.writeConcern=acknowledged
  * 
  * 
  */
@@ -79,7 +81,7 @@ public class MongoDbClient extends DB {
     protected static final Integer INCLUDE = Integer.valueOf(1);
 
     /** A singleton Mongo instance. */
-    private static Mongo[] mongos;
+    private static MongoClient[] mongos;
 
     /** The default write concern for the test. */
     private static WriteConcern writeConcern;
@@ -116,7 +118,7 @@ public class MongoDbClient extends DB {
                     "mongodb://localhost:27017");
 
             clients = urls.split(",");
-            mongos = new Mongo[clients.length];
+            mongos = new MongoClient[clients.length];
 
             database = props.getProperty("mongodb.database", "ycsb");
 
@@ -127,11 +129,13 @@ public class MongoDbClient extends DB {
             // write concern 
             String writeConcernType = props.getProperty("mongodb.writeConcern", 
                     "acknowledged").toLowerCase();
-        
+/*        
             if ("errors_ignored".equals(writeConcernType)) {
                 writeConcern = WriteConcern.ERRORS_IGNORED;
             }
-            else if ("unacknowledged".equals(writeConcernType)) {
+            else 
+*/
+            if ("unacknowledged".equals(writeConcernType)) {
                 writeConcern = WriteConcern.UNACKNOWLEDGED;
             }
             else if ("acknowledged".equals(writeConcernType)) {
@@ -188,10 +192,11 @@ public class MongoDbClient extends DB {
                     // need to append db to url.
                     url += "/"+database;
                     System.out.println("new database url = "+url);
-                    MongoOptions options = new MongoOptions();
-                    options.setCursorFinalizerEnabled(false);
-                    options.connectionsPerHost = Integer.parseInt(maxConnections);
-                    mongos[i] = new Mongo(new DBAddress(url), options);
+                    MongoClientOptions options = new MongoClientOptions.Builder().build();
+//                    options.setCursorFinalizerEnabled(false);
+//                    options.connectionsPerHost = Integer.parseInt(maxConnections);
+                    mongos[i] = new MongoClient(new ServerAddress(url), options);
+                    //mongos[i] = new MongoClient(new DBAddress(url), options);
                     
                     System.out.println("mongo connection created with " + url);
                 } catch (Exception e1) {
@@ -239,7 +244,9 @@ public class MongoDbClient extends DB {
         com.mongodb.DB db=null;
         try {
             db = mongos[random.nextInt(mongos.length)].getDB(database);
-            db.requestStart();
+            
+            //db.requestStart();
+            
             DBCollection collection = db.getCollection(table);
             DBObject q = new BasicDBObject().append("_id", key);
             WriteResult res = collection.remove(q, writeConcern);
@@ -249,6 +256,7 @@ public class MongoDbClient extends DB {
             System.err.println(e.toString());
             return 1;
         }
+/*
         finally
         {
             if (db!=null)
@@ -256,6 +264,7 @@ public class MongoDbClient extends DB {
                 db.requestDone();
             }
         }
+        */
     }
 
     /**
@@ -274,7 +283,7 @@ public class MongoDbClient extends DB {
         try {
             db = mongos[random.nextInt(mongos.length)].getDB(database); 
 
-            db.requestStart();
+//            db.requestStart();
 
             DBCollection collection = db.getCollection(table);
             DBObject r = new BasicDBObject().append("_id", key);
@@ -286,11 +295,14 @@ public class MongoDbClient extends DB {
         } catch (Exception e) {
             e.printStackTrace();
             return 1;
-        } finally {
+        } 
+/*
+        finally {
             if (db!=null) {
                 db.requestDone();
             }
         }
+        */
     }
 
     /**
@@ -310,7 +322,7 @@ public class MongoDbClient extends DB {
         try {
             db = mongos[random.nextInt(mongos.length)].getDB(database);
 
-            db.requestStart();
+//            db.requestStart();
 
             DBCollection collection = db.getCollection(table);
             DBObject q = new BasicDBObject().append("_id", key);
@@ -332,13 +344,18 @@ public class MongoDbClient extends DB {
             }
             return queryResult != null ? 0 : 1;
         } catch (Exception e) {
-            System.err.println(e.toString());
+            System.err.println(
+                Thread.currentThread().getStackTrace()[2].getLineNumber() 
+                + e.toString());
             return 1;
-        } finally {
+        } 
+/*
+        finally {
             if (db!=null) {
                 db.requestDone();
             }
         }
+        */
     }
 
     /**
@@ -357,7 +374,7 @@ public class MongoDbClient extends DB {
         try {
             db = mongos[random.nextInt(mongos.length)].getDB(database);
 
-            db.requestStart();
+//            db.requestStart();
 
             DBCollection collection = db.getCollection(table);
             DBObject q = new BasicDBObject().append("_id", key);
@@ -376,11 +393,14 @@ public class MongoDbClient extends DB {
         } catch (Exception e) {
             System.err.println(e.toString());
             return 1;
-        } finally {
+        } 
+/*
+        finally {
             if (db!=null) {
                 db.requestDone();
             }
         }
+        */
     }
 
     /**
@@ -401,7 +421,7 @@ public class MongoDbClient extends DB {
         DBCursor cursor = null; 
         try {
             db = mongos[random.nextInt(mongos.length)].getDB(database);
-            db.requestStart();
+//            db.requestStart();
             DBCollection collection = db.getCollection(table);
             // { "_id":{"$gte":startKey, "$lte":{"appId":key+"\uFFFF"}} }
             DBObject scanRange = new BasicDBObject().append("$gte", startkey);
@@ -426,7 +446,7 @@ public class MongoDbClient extends DB {
                 if (cursor != null) {
                     cursor.close();
                 }
-                db.requestDone();
+//                db.requestDone();
             }
         }
     }
