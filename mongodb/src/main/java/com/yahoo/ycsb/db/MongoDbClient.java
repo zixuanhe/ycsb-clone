@@ -5,23 +5,34 @@
  *
  * https://gist.github.com/000a66b8db2caf42467b#file_mongo_db.java
  *
+ * Work with maven mongodb driver 2.x.x 
  */
 
 package com.yahoo.ycsb.db;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Properties;
-import java.util.Set;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Random;
+import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import com.mongodb.*;
-
+import com.mongodb.BasicDBObject;
+import com.mongodb.DBAddress;
+import com.mongodb.DBCollection;
+import com.mongodb.DBCursor;
+import com.mongodb.DBObject;
+import com.mongodb.Mongo;
+import com.mongodb.MongoOptions;
+import com.mongodb.ReadPreference;
+import com.mongodb.WriteConcern;
+import com.mongodb.WriteResult;
+import com.yahoo.ycsb.ByteArrayByteIterator;
+import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
-import com.yahoo.ycsb.ByteIterator;
-import com.yahoo.ycsb.StringByteIterator;
 
 /**
  * MongoDB client for YCSB framework.
@@ -38,7 +49,8 @@ import com.yahoo.ycsb.StringByteIterator;
  * mongodb.writeConcern.continueOnInsertError=(true|false)
  * mongodb.readPreference=secondaryPreferred
  *
- * mongodb.writeConcert.X override specific parameters defined by general writeConcern property.
+ * mongodb.writeConcert.X override specific parameters defined by general 
+ *      writeConcern property.
  *
  * Default values:
  *
@@ -52,13 +64,38 @@ import com.yahoo.ycsb.StringByteIterator;
  * @author ypai
  * @author dnelubin
  *
+ * ------------------------------------------------------------------
+ * 
+ * Properties to set: 
+ * 
+ * mongodb.url=mongodb://localhost:27017 mongodb.database=ycsb 
+ * mongodb.writeConcern= acknowledged
+ * 
+ * 
  */
 public class MongoDbClient extends DB {
+    
+    /** Used to include a field in a response. */
+    protected static final Integer INCLUDE = Integer.valueOf(1);
 
-    Mongo mongo;
-    WriteConcern writeConcern;
-    ReadPreference readPreference;
-    String database;
+    /** A singleton Mongo instance. */
+    private static Mongo[] mongos;
+
+    /** The default write concern for the test. */
+    private static WriteConcern writeConcern;
+
+    /** The default read preference for the test */
+    private static ReadPreference readPreference;
+
+    /** The database to access. */
+    private static String database;
+
+    /** Count the number of times initialized to teardown on the last {@link #cleanup()}. */
+    private static final AtomicInteger initCount = new AtomicInteger(0);
+
+    private static Random random = new Random();
+
+    private static String[] clients = null; 
 
     @Override
     /**
@@ -66,169 +103,148 @@ public class MongoDbClient extends DB {
      * Called once per DB instance; there is one DB instance per client thread.
      */
     public void init() throws DBException {
-        // initialize MongoDb driver
-        Properties props = getProperties();
-        String url = props.getProperty("mongodb.url", "mongodb://localhost:27017");
-        database = props.getProperty("mongodb.database", "ycsb");
-        String writeConcernType = props.getProperty("mongodb.writeConcern", "safe").toLowerCase();
-        String readPreferenceType = props.getProperty("mongodb.readPreference", "primary").toLowerCase();
-
-        if ("none".equals(writeConcernType)) {
-            writeConcern = WriteConcern.NONE;
-        } else if ("safe".equals(writeConcernType)) {
-            writeConcern = WriteConcern.SAFE;
-        } else if ("normal".equals(writeConcernType)) {
-            writeConcern = WriteConcern.NORMAL;
-        } else if ("fsync_safe".equals(writeConcernType)) {
-            writeConcern = WriteConcern.FSYNC_SAFE;
-        } else if ("replicas_safe".equals(writeConcernType)) {
-            writeConcern = WriteConcern.REPLICAS_SAFE;
-        } else {
-            System.err.println("ERROR: Invalid writeConcern: '" + writeConcernType + "'. " +
-                "Must be [ none | safe | normal | fsync_safe | replicas_safe ]");
-            System.exit(1);
-        }
-
-        String writeConcernWValue = props.getProperty("mongodb.writeConcern.w", String.valueOf(writeConcern.getW()));
-        String writeConcernWtimeoutValue = props.getProperty("mongodb.writeConcern.wtimeout",
-                String.valueOf(writeConcern.getWtimeout()));
-        String writeConcernFsyncValue = props.getProperty("mongodb.writeConcern.fsync", String.valueOf(writeConcern.getFsync()));
-        String writeConcernJValue = props.getProperty("mongodb.writeConcern.j", String.valueOf(writeConcern.getJ()));
-        String writeConcernContinueValue = props.getProperty("mongodb.writeConcern.continueOnErrorForInsert",
-                String.valueOf(writeConcern.getContinueOnErrorForInsert()));
-
-        try {
-            writeConcern = new WriteConcern(Integer.parseInt(writeConcernWValue),
-                    writeConcern.getWtimeout(),
-                    writeConcern.getFsync(),
-                    writeConcern.getJ(),
-                    writeConcern.getContinueOnErrorForInsert());
-        } catch (NumberFormatException e) {
-            System.err.println("ERROR: Invalid writeConcern.w: '" + writeConcernWValue + "'. " +
-                    "Must be integer");
-            System.exit(1);
-        }
-
-        try {
-            writeConcern = new WriteConcern(writeConcern.getW(),
-                Integer.parseInt(writeConcernWtimeoutValue),
-                writeConcern.getFsync(),
-                writeConcern.getJ(),
-                writeConcern.getContinueOnErrorForInsert());
-        } catch (NumberFormatException e) {
-            System.err.println("ERROR: Invalid writeConcern.wtimeout: '" + writeConcernWtimeoutValue + "'. " +
-                    "Must be integer");
-            System.exit(1);
-        }
-
-        if (!"true".equalsIgnoreCase(writeConcernFsyncValue) && !"false".equalsIgnoreCase(writeConcernFsyncValue)) {
-            System.err.println("ERROR: Invalid writeConcern.fsync: '" + writeConcernFsyncValue + "'. " +
-                    "Must be true or false");
-            System.exit(1);
-        }
-        writeConcern = new WriteConcern(writeConcern.getW(),
-                writeConcern.getWtimeout(),
-                Boolean.parseBoolean(writeConcernFsyncValue),
-                writeConcern.getJ(),
-                writeConcern.getContinueOnErrorForInsert());
-
-        if (!"true".equalsIgnoreCase(writeConcernJValue) && !"false".equalsIgnoreCase(writeConcernJValue)) {
-            System.err.println("ERROR: Invalid writeConcern.j: '" + writeConcernJValue + "'. " +
-                    "Must be true or false");
-            System.exit(1);
-        }
-        writeConcern = new WriteConcern(writeConcern.getW(),
-                writeConcern.getWtimeout(),
-                writeConcern.getFsync(),
-                Boolean.parseBoolean(writeConcernJValue),
-                writeConcern.getContinueOnErrorForInsert());
-
-        if (!"true".equalsIgnoreCase(writeConcernContinueValue) && !"false".equalsIgnoreCase(writeConcernContinueValue)) {
-            System.err.println("ERROR: Invalid writeConcern.continueOnErrorForInsert: '" + writeConcernContinueValue + "'. " +
-                    "Must be true or false");
-            System.exit(1);
-        }
-        writeConcern = new WriteConcern(writeConcern.getW(),
-                writeConcern.getWtimeout(),
-                writeConcern.getFsync(),
-                writeConcern.getJ(),
-                Boolean.parseBoolean(writeConcernContinueValue));
-
-        if ("primary".equals(readPreferenceType)) {
-            readPreference = ReadPreference.primary();
-        } else if ("primarypreferred".equals(readPreferenceType)) {
-            readPreference = ReadPreference.primaryPreferred();
-        } else if ("secondary".equals(readPreferenceType)) {
-            readPreference = ReadPreference.secondary();
-        } else if ("secondarypreferred".equals(readPreferenceType)) {
-            readPreference = ReadPreference.secondaryPreferred();
-        } else if ("nearest".equals(readPreferenceType)) {
-            readPreference = ReadPreference.nearest();
-        } else {
-            System.err.println("ERROR: Invalid readPreference: '" + readPreferenceType + "'. " +
-                    "Must be [ primary | primaryPreferred | secondary | secondaryPreferred | nearest ]");
-            System.exit(1);
-        }
-        //TODO: support tagset
-
-        try {
-            // strip out prefix since Java driver doesn't currently support
-            // standard connection format URL yet
-            // http://www.mongodb.org/display/DOCS/Connections
-            if (url.startsWith("mongodb://")) {
-                url = url.substring(10);
+        initCount.incrementAndGet(); 
+        synchronized (INCLUDE) { 
+            // already existed 
+            if (mongos != null) {
+                return; 
             }
 
-            // need to append db to url.
-            url += "/"+database;
-            System.out.println("new database url = "+url);
-            mongo = new Mongo(new DBAddress(url));
-            System.out.println("mongo connection created with "+url);
-        } catch (Exception e1) {
-            System.err.println(
-                    "Could not initialize MongoDB connection pool for Loader: "
-                            + e1.toString());
-            e1.printStackTrace();
-            return;
-        }
+            // initialize MongoDb driver
+            Properties props = getProperties();
+            String urls = props.getProperty("mongodb.url", 
+                    "mongodb://localhost:27017");
 
-    }
+            clients = urls.split(",");
+            mongos = new Mongo[clients.length];
+
+            database = props.getProperty("mongodb.database", "ycsb");
+
+            // Set connectionalpool to size of ycsb thread pool 
+            final String maxConnections = props.getProperty("threadcount", 
+                    "100");
+
+            // write concern 
+            String writeConcernType = props.getProperty("mongodb.writeConcern", 
+                    "acknowledged").toLowerCase();
+        
+            if ("errors_ignored".equals(writeConcernType)) {
+                writeConcern = WriteConcern.ERRORS_IGNORED;
+            }
+            else if ("unacknowledged".equals(writeConcernType)) {
+                writeConcern = WriteConcern.UNACKNOWLEDGED;
+            }
+            else if ("acknowledged".equals(writeConcernType)) {
+                writeConcern = WriteConcern.ACKNOWLEDGED;
+            }
+            else if ("journaled".equals(writeConcernType)) {
+                writeConcern = WriteConcern.JOURNALED;
+            }
+            else if ("replica_acknowledged".equals(writeConcernType)) {
+                writeConcern = WriteConcern.REPLICA_ACKNOWLEDGED;
+            }
+            else {
+                System.err.println("ERROR: Invalid writeConcern: '"
+                    + writeConcernType
+                    + "'. "
+                    + "Must be [ errors_ignored | unacknowledged | " 
+                    + "acknowledged | journaled | replica_acknowledged ]");
+                System.exit(1);
+            }
+
+            // read preference 
+            String readPreferenceType = props.getProperty(
+                "mongodb.readPreference", "primary").toLowerCase();
+
+            if ("primary".equals(readPreferenceType)) {
+                readPreference = ReadPreference.primary();
+            } else if ("primarypreferred".equals(readPreferenceType)) {
+                readPreference = ReadPreference.primaryPreferred();
+            } else if ("secondary".equals(readPreferenceType)) {
+                readPreference = ReadPreference.secondary();
+            } else if ("secondarypreferred".equals(readPreferenceType)) {
+                readPreference = ReadPreference.secondaryPreferred();
+            } else if ("nearest".equals(readPreferenceType)) {
+                readPreference = ReadPreference.nearest();
+            } else {
+                System.err.println("ERROR: Invalid readPreference: '" 
+                    + readPreferenceType 
+                    + "'. Must be [ primary | primaryPreferred | " 
+                    + "secondary | secondaryPreferred | nearest ]");
+                System.exit(1);
+            }
+
+            for(int i=0; i<mongos.length; i++) {
+                try {
+                    // strip out prefix since Java driver doesn't currently support
+                    // standard connection format URL yet
+                    // http://www.mongodb.org/display/DOCS/Connections
+                    String url = clients[i];
     
-    @Override
+                    if (url.startsWith("mongodb://")) {
+                        url = url.substring(10);
+                    }
+
+                    // need to append db to url.
+                    url += "/"+database;
+                    System.out.println("new database url = "+url);
+                    MongoOptions options = new MongoOptions();
+                    options.setCursorFinalizerEnabled(false);
+                    options.connectionsPerHost = Integer.parseInt(maxConnections);
+                    mongos[i] = new Mongo(new DBAddress(url), options);
+                    
+                    System.out.println("mongo connection created with " + url);
+                } catch (Exception e1) {
+                    System.err.println(
+                        "Could not initialize MongoDB connection pool for Loader: "
+                        + e1.toString());
+                    e1.printStackTrace();
+                    return;
+                }
+            }
+        }
+    }   
+    
 	/**
 	 * Cleanup any state for this DB.
 	 * Called once per DB instance; there is one DB instance per client thread.
 	 */
-	public void cleanup() throws DBException
-	{
-        try {
-        	mongo.close();
-        } catch (Exception e1) {
-        	System.err.println(
-                    "Could not close MongoDB connection pool: "
-                            + e1.toString());
-            e1.printStackTrace();
-            return;
+    @Override
+	public void cleanup() throws DBException {
+        if (initCount.decrementAndGet() <= 0) {
+            for(int i=0; i<mongos.length; i++) {
+                try {
+                    mongos[i].close();
+                } catch (Exception e1) {
+        	        System.err.println(
+                        "Could not close MongoDB connection pool: "
+                        + e1.toString());
+                    e1.printStackTrace();
+                    return;
+                }
+            }
         }
 	}
 
-    @Override
     /**
      * Delete a record from the database.
      *
      * @param table The name of the table
      * @param key The record key of the record to delete.
-     * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
+     * @return Zero on success, a non-zero error code on error. 
+     *         See this class's description for a discussion of error codes.
      */
+    @Override
     public int delete(String table, String key) {
         com.mongodb.DB db=null;
         try {
-            db = mongo.getDB(database);
+            db = mongos[random.nextInt(mongos.length)].getDB(database);
             db.requestStart();
             DBCollection collection = db.getCollection(table);
             DBObject q = new BasicDBObject().append("_id", key);
             WriteResult res = collection.remove(q, writeConcern);
-            return res.getN() == 1 ? 0 : 1;
+            return 0;
+            //return res.getN() == 1 ? 0 : 1;
         } catch (Exception e) {
             System.err.println(e.toString());
             return 1;
@@ -242,7 +258,6 @@ public class MongoDbClient extends DB {
         }
     }
 
-    @Override
     /**
      * Insert a record in the database. Any field/value pairs in the specified values HashMap will be written into the record with the specified
      * record key.
@@ -252,10 +267,12 @@ public class MongoDbClient extends DB {
      * @param values A HashMap of field/value pairs to insert in the record
      * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
      */
-    public int insert(String table, String key, HashMap<String, ByteIterator> values) {
+    @Override
+    public int insert(String table, String key, 
+            HashMap<String, ByteIterator> values) {
         com.mongodb.DB db = null;
         try {
-            db = mongo.getDB(database);
+            db = mongos[random.nextInt(mongos.length)].getDB(database); 
 
             db.requestStart();
 
@@ -265,26 +282,17 @@ public class MongoDbClient extends DB {
 		        r.put(k, values.get(k).toArray());
 	        }
             WriteResult res = collection.insert(r, writeConcern);
-            String error = res.getError();
-            if (error == null) {
-                return 0;
-            } else {
-                System.err.println(error);
-                return 1;
-            }
+            return 0;
         } catch (Exception e) {
             e.printStackTrace();
             return 1;
         } finally {
-            if (db!=null)
-            {
+            if (db!=null) {
                 db.requestDone();
             }
         }
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
     /**
      * Read a record from the database. Each field/value pair from the result will be stored in a HashMap.
      *
@@ -294,24 +302,25 @@ public class MongoDbClient extends DB {
      * @param result A HashMap of field/value pairs for the result
      * @return Zero on success, a non-zero error code on error or "not found".
      */
+    @Override
+    @SuppressWarnings("unchecked")
     public int read(String table, String key, Set<String> fields,
             HashMap<String, ByteIterator> result) {
         com.mongodb.DB db = null;
         try {
-            db = mongo.getDB(database);
+            db = mongos[random.nextInt(mongos.length)].getDB(database);
 
             db.requestStart();
 
             DBCollection collection = db.getCollection(table);
             DBObject q = new BasicDBObject().append("_id", key);
             DBObject fieldsToReturn = new BasicDBObject();
-            boolean returnAllFields = fields == null;
 
             DBObject queryResult = null;
-            if (!returnAllFields) {
+            if (fields != null) {
                 Iterator<String> iter = fields.iterator();
                 while (iter.hasNext()) {
-                    fieldsToReturn.put(iter.next(), 1);
+                    fieldsToReturn.put(iter.next(), INCLUDE);
                 }
                 queryResult = collection.findOne(q, fieldsToReturn, readPreference);
             } else {
@@ -326,15 +335,12 @@ public class MongoDbClient extends DB {
             System.err.println(e.toString());
             return 1;
         } finally {
-            if (db!=null)
-            {
+            if (db!=null) {
                 db.requestDone();
             }
         }
     }
 
-
-    @Override
     /**
      * Update a record in the database. Any field/value pairs in the specified values HashMap will be written into the record with the specified
      * record key, overwriting any existing values with the same field name.
@@ -344,10 +350,12 @@ public class MongoDbClient extends DB {
      * @param values A HashMap of field/value pairs to update in the record
      * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
      */
-    public int update(String table, String key, HashMap<String, ByteIterator> values) {
+    @Override
+    public int update(String table, String key, 
+            HashMap<String, ByteIterator> values) {
         com.mongodb.DB db = null;
         try {
-            db = mongo.getDB(database);
+            db = mongos[random.nextInt(mongos.length)].getDB(database);
 
             db.requestStart();
 
@@ -364,24 +372,17 @@ public class MongoDbClient extends DB {
             u.put("$set", fieldsToSet);
             WriteResult res = collection.update(q, u, false, false,
                     writeConcern);
-            String error = res.getError();
-            if (error != null) {
-                System.err.println(error);
-            }
-            return res.getN() == 1 ? 0 : 1;
+            return 0; 
         } catch (Exception e) {
             System.err.println(e.toString());
             return 1;
         } finally {
-            if (db!=null)
-            {
+            if (db!=null) {
                 db.requestDone();
             }
         }
     }
 
-    @Override
-    @SuppressWarnings("unchecked")
     /**
      * Perform a range scan for a set of records in the database. Each field/value pair from the result will be stored in a HashMap.
      *
@@ -392,35 +393,59 @@ public class MongoDbClient extends DB {
      * @param result A Vector of HashMaps, where each HashMap is a set field/value pairs for one record
      * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
      */
+    //@SuppressWarnings("unchecked")
+    @Override
     public int scan(String table, String startkey, int recordcount,
             Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
-        com.mongodb.DB db=null;
+        com.mongodb.DB db = null;
+        DBCursor cursor = null; 
         try {
-            db = mongo.getDB(database);
+            db = mongos[random.nextInt(mongos.length)].getDB(database);
             db.requestStart();
             DBCollection collection = db.getCollection(table);
             // { "_id":{"$gte":startKey, "$lte":{"appId":key+"\uFFFF"}} }
             DBObject scanRange = new BasicDBObject().append("$gte", startkey);
             DBObject q = new BasicDBObject().append("_id", scanRange);
-            DBCursor cursor = collection.find(q).limit(recordcount);    //TODO: apply readPreference here
+            cursor = collection.find(q).limit(recordcount); 
             while (cursor.hasNext()) {
-                //toMap() returns a Map, but result.add() expects a Map<String,String>. Hence, the suppress warnings.
-                result.add(StringByteIterator.getByteIteratorMap((Map<String,String>)cursor.next().toMap()));
+                // toMap() returns a Map, but result.add() expects a 
+                // Map<String,String>. Hence, the suppress warnings.
+                HashMap<String, ByteIterator> resultMap = 
+                    new HashMap<String, ByteIterator>();
+                DBObject obj = cursor.next();
+                fillMap(resultMap, obj);
+                result.add(resultMap);
             }
-
             return 0;
         } catch (Exception e) {
             System.err.println(e.toString());
             return 1;
         }
-        finally
-        {
-            if (db!=null)
-            {
+        finally {
+            if (db!=null) {
+                if (cursor != null) {
+                    cursor.close();
+                }
                 db.requestDone();
             }
         }
+    }
 
+    /**
+     * TODO - Finish
+     *
+     * @param resultMap
+     * @param obj
+     */
+    @SuppressWarnings("unchecked")
+    protected void fillMap(HashMap<String, ByteIterator> resultMap, DBObject obj) {
+        Map<String, Object> objMap = obj.toMap();
+        for (Map.Entry<String, Object> entry : objMap.entrySet()) {
+            if (entry.getValue() instanceof byte[]) {
+                resultMap.put(entry.getKey(), new ByteArrayByteIterator(
+                        (byte[]) entry.getValue()));
+            }
+        }
     }
 }
 
