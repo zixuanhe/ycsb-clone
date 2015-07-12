@@ -13,8 +13,8 @@ import org.codehaus.jackson.JsonGenerator;
 import org.codehaus.jackson.JsonNode;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.node.ObjectNode;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+//import org.slf4j.Logger;
+//import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -26,7 +26,7 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 public abstract class MemcachedCompatibleClient extends DB {
 
-    protected final Logger log = LoggerFactory.getLogger(getClass());
+//    protected final Logger log = LoggerFactory.getLogger(getClass());
 
     protected static final String QUALIFIED_KEY = "{0}-{1}";
 
@@ -77,9 +77,12 @@ public abstract class MemcachedCompatibleClient extends DB {
             }
             return OK;
         } catch (Exception e) {
+            System.err.println("Error encountered" + e.toString());
+/*
             if (log.isErrorEnabled()) {
                 log.error("Error encountered", e);
             }
+            */
             return ERROR;
         }
     }
@@ -96,9 +99,12 @@ public abstract class MemcachedCompatibleClient extends DB {
             OperationFuture<Boolean> future = client.replace(key, objectExpirationTime, toJson(values));
             return getReturnCode(future);
         } catch (Exception e) {
+            System.err.println("Error updating value with key:" + key +  e.toString());
+/*
             if (log.isErrorEnabled()) {
                 log.error("Error updating value with key: " + key, e);
             }
+            */
             return ERROR;
         }
     }
@@ -110,9 +116,12 @@ public abstract class MemcachedCompatibleClient extends DB {
             OperationFuture<Boolean> future = client.add(key, objectExpirationTime, toJson(values));
             return getReturnCode(future);
         } catch (Exception e) {
+            System.err.println("Error inserting value " + e.toString());
+/*
             if (log.isErrorEnabled()) {
                 log.error("Error inserting value", e);
             }
+*/
             return ERROR;
         }
     }
@@ -124,9 +133,12 @@ public abstract class MemcachedCompatibleClient extends DB {
             OperationFuture<Boolean> future = client.delete(key);
             return getReturnCode(future);
         } catch (Exception e) {
+            System.err.println("Error deleting value" +  e.toString());
+/*
             if (log.isErrorEnabled()) {
                 log.error("Error deleting value", e);
             }
+*/
             return ERROR;
         }
     }
