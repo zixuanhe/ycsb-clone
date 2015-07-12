@@ -303,7 +303,6 @@ public class MongoDbClient extends DB {
             //WriteResult res = collection.update(q, u, false, false,
             //        writeConcern);
             if (res.getN() == 0) {
-                System.err.println("Nothing updated! for key " + key);
                 return 1; 
             }
             return 0; 
