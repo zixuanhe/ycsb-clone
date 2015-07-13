@@ -643,7 +643,7 @@ public class Client
 			targetperthreadperms=targetperthread/1000.0;
 		}	 
 
-		System.out.println("YCSB Client 0.1");
+		System.out.println("YCSB Client 0.3");
 		System.out.print("Command line:");
 		for (int i=0; i<args.length; i++)
 		{

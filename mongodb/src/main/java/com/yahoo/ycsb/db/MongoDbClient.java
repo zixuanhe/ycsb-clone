@@ -41,6 +41,9 @@ import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 
+import java.util.logging.Logger;
+//import com.mongodb.diagnostics.logging;
+
 /**
  * MongoDB client for YCSB framework.
  * 
@@ -148,11 +151,21 @@ public class MongoDbClient extends DB {
     @Override
     public void init() throws DBException {
         initCount.incrementAndGet();
+        //Logger mongoLogger = Logger.getLogger( "com.mongodb" );
+        //mongoLogger.setLevel(Level.java.util.logging.Level.INFO);
+ 
         synchronized (INCLUDE) {
             if (mongoClient != null) {
                 return;
             }
-
+/*
+            LogManager.getLogger("org.mongodb.driver.connection").setLevel(java.util.logging.Level.INFO);
+            LogManager.getLogger("org.mongodb.driver.management").setLevel(java.util.logging.Level.INFO);
+            LogManager.getLogger("org.mongodb.driver.cluster").setLevel(java.util.logging.Level.INFO);
+            LogManager.getLogger("org.mongodb.driver.protocol.insert").setLevel(java.util.logging.Level.INFO);
+            LogManager.getLogger("org.mongodb.driver.protocol.query").setLevel(java.util.logging.Level.INFO);
+            LogManager.getLogger("org.mongodb.driver.protocol.update").setLevel(java.util.logging.Level.INFO);
+*/
             Properties props = getProperties();
 
             // Set insert batchsize, default 1 - to be YCSB-original equivalent
