@@ -124,7 +124,7 @@ public class OneMeasurementHistogram extends OneMeasurement
         done99th = true; 
         //break;
       }
-      if (((double) opcounter) / ((double) operations.get()) >= 0.999) 
+      if (((double) opcounter)/((double) operations) >= 0.999) 
       {
         exporter.write(getName(), "99.9thPercentileLatency(us)", i * 10);
         //exporter.write(getName(), "99thPercentileLatency(ms)", i);
