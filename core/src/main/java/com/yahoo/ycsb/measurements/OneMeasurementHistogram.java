@@ -117,7 +117,7 @@ public class OneMeasurementHistogram extends OneMeasurement
         //exporter.write(getName(), "95thPercentileLatency(ms)", i);
         done95th=true;
       }
-      if (((double)opcounter)/((double)operations)>=0.99)
+      if ( (!done99th) &&  ((double)opcounter)/((double)operations)>=0.99)
       {
         exporter.write(getName(), "99thPercentileLatency(us)", i * 10);
         //exporter.write(getName(), "99thPercentileLatency(ms)", i);
@@ -136,11 +136,13 @@ public class OneMeasurementHistogram extends OneMeasurement
       exporter.write(getName(), "Return=" + entry.getKey(), entry.getValue().get());
     }
 
+/*
     for (int i=0; i<_buckets; i++)
     {
       exporter.write(getName(), Integer.toString(i), histogram[i]);
     }
     exporter.write(getName(), ">"+_buckets, histogramoverflow);
+*/    
   }
 
   @Override
