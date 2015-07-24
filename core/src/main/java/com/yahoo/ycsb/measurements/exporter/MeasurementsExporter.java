@@ -46,4 +46,15 @@ public interface MeasurementsExporter extends Closeable
    */
   public void write(String metric, String measurement, double d) throws IOException;
 
+  /**
+   * Write a string to the exported format.
+   * 
+   * @param metric Metric name, for example "READ LATENCY".
+   * @param measurement Measurement name, for example "Average latency".
+   * @param d Message to write.
+   * @throws IOException if writing failed
+   */
+  public void write(String metric, String measurement, String msg) throws IOException;
+
+
 }

@@ -448,6 +448,12 @@ public class Client
   public static final String EXPORT_FILE_PROPERTY="exportfile";
 
   /**
+   * Allow user to specify a message for exportor
+   */
+  public static final String EXPORT_MSG_PROPERTY="exportmsg";
+
+
+  /**
    * The number of YCSB client threads to run.
    */
   public static final String THREAD_COUNT_PROPERTY="threadcount";
@@ -543,6 +549,12 @@ public class Client
             + ", will use default text reporter.");
         e.printStackTrace();
         exporter = new TextMeasurementsExporter(out);
+      }
+
+      String exportMsg = props.getProperty(EXPORT_MSG_PROPERTY);
+      if (exportMsg != null) 
+      {
+        exporter.write("OVERALL", "MSG", exportMsg);
       }
 
       exporter.write("OVERALL", "RunTime(ms)", runtime);

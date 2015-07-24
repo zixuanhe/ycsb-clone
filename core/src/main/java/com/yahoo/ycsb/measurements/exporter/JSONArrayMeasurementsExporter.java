@@ -60,6 +60,17 @@ public class JSONArrayMeasurementsExporter implements MeasurementsExporter
     g.writeEndObject();
   }
 
+  public void write(String metric, String measurement, String d) throws IOException
+  {
+    g.writeStartObject();
+    g.writeStringField("metric", metric);
+    g.writeStringField("measurement", measurement);
+    g.writeStringField("value", d);
+    g.writeEndObject();
+  }
+
+ 
+
   public void close() throws IOException
   {
     if (g != null)
