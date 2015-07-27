@@ -475,6 +475,8 @@ public class Client
    */
   public static final String MAX_EXECUTION_TIME = "maxexecutiontime";
 
+  private static long startTime; 
+  private static long endTime;  
 
   public static void usageMessage()
   {
@@ -556,6 +558,9 @@ public class Client
       {
         exporter.write("OVERALL", "MSG", exportMsg);
       }
+
+      exporter.write("OVERALL", "StartTime", startTime);
+      exporter.write("OVERALL", "EndTime", endTime);
 
       exporter.write("OVERALL", "RunTime(ms)", runtime);
       double throughput = 1000.0 * (opcount) / (runtime);
@@ -948,6 +953,9 @@ public class Client
 
     try
     {
+      endTime = en; 
+      startTime = st; 
+      
       exportMeasurements(props, opsDone, en - st);
     } catch (IOException e)
     {
