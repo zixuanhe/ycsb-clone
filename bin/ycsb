@@ -1,4 +1,20 @@
 #!/usr/bin/env python
+#
+# Copyright (c) 2012 - 2015 YCSB contributors. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you
+# may not use this file except in compliance with the License. You
+# may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied. See the License for the specific language governing
+# permissions and limitations under the License. See accompanying
+# LICENSE file.
+#
 
 import argparse
 import fnmatch
@@ -35,16 +51,19 @@ DATABASES = {
     "cassandra-8"  : "com.yahoo.ycsb.db.CassandraClient8",
     "cassandra-10" : "com.yahoo.ycsb.db.CassandraClient10",
     "cassandra-cql": "com.yahoo.ycsb.db.CassandraCQLClient",
+    "cassandra2-cql": "com.yahoo.ycsb.db.CassandraCQLClient",
     "couchbase"    : "com.yahoo.ycsb.db.CouchbaseClient",
     "dynamodb"     : "com.yahoo.ycsb.db.DynamoDBClient",
     "elasticsearch": "com.yahoo.ycsb.db.ElasticSearchClient",
     "gemfire"      : "com.yahoo.ycsb.db.GemFireClient",
-    "hbase"        : "com.yahoo.ycsb.db.HBaseClient",
-    "hbase-10"     : "com.yahoo.ycsb.db.HBaseClient10",
+    "hbase094"     : "com.yahoo.ycsb.db.HBaseClient",
+    "hbase098"     : "com.yahoo.ycsb.db.HBaseClient",
+    "hbase10"      : "com.yahoo.ycsb.db.HBaseClient10",
     "hypertable"   : "com.yahoo.ycsb.db.HypertableClient",
     "infinispan-cs": "com.yahoo.ycsb.db.InfinispanRemoteClient",
     "infinispan"   : "com.yahoo.ycsb.db.InfinispanClient",
     "jdbc"         : "com.yahoo.ycsb.db.JdbcDBClient",
+    "kudu"         : "com.yahoo.ycsb.db.KuduYCSBClient",
     "mapkeeper"    : "com.yahoo.ycsb.db.MapKeeperClient",
     "mongodb"      : "com.yahoo.ycsb.db.MongoDbClient",
     "mongodb-async": "com.yahoo.ycsb.db.AsyncMongoDbClient",
@@ -125,11 +144,12 @@ def is_distribution():
 # presumes maven can run, so should only be run on source checkouts
 # will invoke the 'package' goal for the given binding in order to resolve intra-project deps
 # presumes maven properly handles system-specific path separators
-def get_classpath_from_maven(database):
+# Given module is full module name eg. 'core' or 'couchbase-binding'
+def get_classpath_from_maven(module):
     try:
-        debug("Running 'mvn -pl com.yahoo.ycsb:"+database+"-binding -am package -DskipTests "
+        debug("Running 'mvn -pl com.yahoo.ycsb:" + module + " -am package -DskipTests "
               "dependency:build-classpath -DincludeScope=compile -Dmdep.outputFilterFile=true'")
-        mvn_output = subprocess.check_output(["mvn", "-pl", "com.yahoo.ycsb:"+database+"-binding",
+        mvn_output = subprocess.check_output(["mvn", "-pl", "com.yahoo.ycsb:" + module,
                                               "-am", "package", "-DskipTests",
                                               "dependency:build-classpath",
                                               "-DincludeScope=compile",
@@ -187,12 +207,14 @@ def main():
         warn("Running against a source checkout. In order to get our runtime "
              "dependencies we'll have to invoke Maven. Depending on the state "
              "of your system, this may take ~30-45 seconds")
-        db_dir = os.path.join(ycsb_home, binding)
+        db_location = "core" if binding == "basic" else binding
+        project = "core" if binding == "basic" else binding + "-binding"
+        db_dir = os.path.join(ycsb_home, db_location)
         # goes first so we can rely on side-effect of package
-        maven_says = get_classpath_from_maven(binding)
+        maven_says = get_classpath_from_maven(project)
         # TODO when we have a version property, skip the glob
         cp = find_jars(os.path.join(db_dir, "target"),
-                       binding + "-binding*.jar")
+                       project + "*.jar")
         # alredy in jar:jar:jar form
         cp.append(maven_says)
     cp.insert(0, os.path.join(db_dir, "conf"))

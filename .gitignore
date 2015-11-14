@@ -26,4 +26,9 @@ output*
 .settings
 .checkstyle
 
+# ignore standard intellij
+.idea/
+*.iml
+*.iws
+
 .DS_Store

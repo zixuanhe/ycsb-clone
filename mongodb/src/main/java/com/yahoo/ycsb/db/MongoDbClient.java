@@ -1,3 +1,20 @@
+/**
+ * Copyright (c) 2012 - 2015 YCSB contributors. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
 /*
  * MongoDB client binding for YCSB.
  *
@@ -7,19 +24,6 @@
  */
 package com.yahoo.ycsb.db;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.Vector;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import com.mongodb.client.model.InsertManyOptions;
-import org.bson.Document;
-import org.bson.types.Binary;
-
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.ReadPreference;
@@ -28,6 +32,8 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.InsertManyOptions;
+import com.mongodb.client.model.UpdateOneModel;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
@@ -35,6 +41,19 @@ import com.yahoo.ycsb.ByteArrayByteIterator;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
+import com.yahoo.ycsb.Status;
+
+import org.bson.Document;
+import org.bson.types.Binary;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.Vector;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import java.util.logging.Logger;
 //import com.mongodb.diagnostics.logging;
@@ -89,6 +108,9 @@ public class MongoDbClient extends DB {
   /** The batch size to use for inserts. */
   private static int batchSize;
 
+  /** If true then use updates with the upsert option for inserts. */
+  private static boolean useUpsert;
+
   /** The bulk inserts pending for the thread. */
   private final List<Document> bulkInserts = new ArrayList<Document>();
 
@@ -124,7 +146,7 @@ public class MongoDbClient extends DB {
    *         class's description for a discussion of error codes.
    */
   @Override
-  public int delete(String table, String key) {
+  public Status delete(String table, String key) {
     try {
       MongoCollection<Document> collection = database.getCollection(table);
 
@@ -133,12 +155,12 @@ public class MongoDbClient extends DB {
           collection.withWriteConcern(writeConcern).deleteOne(query);
       if (result.wasAcknowledged() && result.getDeletedCount() == 0) {
         System.err.println("Nothing deleted for key " + key);
-        return 1;
+        return Status.NOT_FOUND;
       }
-      return 0;
+      return Status.OK;
     } catch (Exception e) {
       System.err.println(e.toString());
-      return 1;
+      return Status.ERROR;
     }
   }
 
@@ -158,6 +180,10 @@ public class MongoDbClient extends DB {
 
       // Set insert batchsize, default 1 - to be YCSB-original equivalent
       batchSize = Integer.parseInt(props.getProperty("batchsize", "1"));
+
+      // Set is inserts are done as upserts. Defaults to false.
+      useUpsert = Boolean.parseBoolean(
+          props.getProperty("mongodb.upsert", "false"));
 
       // Just use the standard connection format URL
       // http://docs.mongodb.org/manual/reference/connection-string/
@@ -227,7 +253,7 @@ public class MongoDbClient extends DB {
    *         class's description for a discussion of error codes.
    */
   @Override
-  public int insert(String table, String key,
+  public Status insert(String table, String key,
       HashMap<String, ByteIterator> values) {
     try {
       MongoCollection<Document> collection = database.getCollection(table);
@@ -237,24 +263,39 @@ public class MongoDbClient extends DB {
       }
 
       if (batchSize == 1) {
-        // this is effectively an insert, but using an upsert instead due
-        // to current inability of the framework to clean up after itself
-        // between test runs.
-        collection.replaceOne(new Document("_id", toInsert.get("_id")),
-            toInsert, UPDATE_WITH_UPSERT);
+        if (useUpsert) {
+          // this is effectively an insert, but using an upsert instead due
+          // to current inability of the framework to clean up after itself
+          // between test runs.
+          collection.replaceOne(new Document("_id", toInsert.get("_id")),
+              toInsert, UPDATE_WITH_UPSERT);
+        } else {
+          collection.insertOne(toInsert);
+        }
       } else {
         bulkInserts.add(toInsert);
         if (bulkInserts.size() == batchSize) {
-          collection.insertMany(bulkInserts, INSERT_UNORDERED);
+          if (useUpsert) {
+            List<UpdateOneModel<Document>> updates = 
+                new ArrayList<UpdateOneModel<Document>>(bulkInserts.size());
+            for (Document doc : bulkInserts) {
+              updates.add(new UpdateOneModel<Document>(
+                  new Document("_id", doc.get("_id")),
+                  doc, UPDATE_WITH_UPSERT));
+            }
+            collection.bulkWrite(updates);
+          } else {
+            collection.insertMany(bulkInserts, INSERT_UNORDERED);
+          }
           bulkInserts.clear();
         }
       }
-      return 0;
+      return Status.OK;
     } catch (Exception e) {
       System.err.println("Exception while trying bulk insert with "
           + bulkInserts.size());
       e.printStackTrace();
-      return 1;
+      return Status.ERROR;
     }
 
   }
@@ -274,7 +315,7 @@ public class MongoDbClient extends DB {
    * @return Zero on success, a non-zero error code on error or "not found".
    */
   @Override
-  public int read(String table, String key, Set<String> fields,
+  public Status read(String table, String key, Set<String> fields,
       HashMap<String, ByteIterator> result) {
     try {
       MongoCollection<Document> collection = database.getCollection(table);
@@ -295,10 +336,10 @@ public class MongoDbClient extends DB {
       if (queryResult != null) {
         fillMap(result, queryResult);
       }
-      return queryResult != null ? 0 : 1;
+      return queryResult != null ? Status.OK : Status.NOT_FOUND;
     } catch (Exception e) {
       System.err.println(e.toString());
-      return 1;
+      return Status.ERROR;
     }
   }
 
@@ -321,7 +362,7 @@ public class MongoDbClient extends DB {
    *         class's description for a discussion of error codes.
    */
   @Override
-  public int scan(String table, String startkey, int recordcount,
+  public Status scan(String table, String startkey, int recordcount,
       Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
     MongoCursor<Document> cursor = null;
     try {
@@ -346,7 +387,7 @@ public class MongoDbClient extends DB {
 
       if (!cursor.hasNext()) {
         System.err.println("Nothing found in scan for key " + startkey);
-        return 1;
+        return Status.ERROR;
       }
 
       result.ensureCapacity(recordcount);
@@ -361,10 +402,10 @@ public class MongoDbClient extends DB {
         result.add(resultMap);
       }
 
-      return 0;
+      return Status.OK;
     } catch (Exception e) {
       System.err.println(e.toString());
-      return 1;
+      return Status.ERROR;
     } finally {
       if (cursor != null) {
         cursor.close();
@@ -387,7 +428,7 @@ public class MongoDbClient extends DB {
    *         description for a discussion of error codes.
    */
   @Override
-  public int update(String table, String key,
+  public Status update(String table, String key,
       HashMap<String, ByteIterator> values) {
     try {
       MongoCollection<Document> collection = database.getCollection(table);
@@ -402,12 +443,12 @@ public class MongoDbClient extends DB {
       UpdateResult result = collection.updateOne(query, update);
       if (result.wasAcknowledged() && result.getMatchedCount() == 0) {
         System.err.println("Nothing updated for key " + key);
-        return 1;
+        return Status.NOT_FOUND;
       }
-      return 0;
+      return Status.OK;
     } catch (Exception e) {
       System.err.println(e.toString());
-      return 1;
+      return Status.ERROR;
     }
   }
 

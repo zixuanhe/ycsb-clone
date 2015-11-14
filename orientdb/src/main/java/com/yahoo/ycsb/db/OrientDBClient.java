@@ -1,4 +1,21 @@
 /**
+ * Copyright (c) 2012 - 2015 YCSB contributors. All rights reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you
+ * may not use this file except in compliance with the License. You
+ * may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied. See the License for the specific language governing
+ * permissions and limitations under the License. See accompanying
+ * LICENSE file.
+ */
+
+/**
  * OrientDB client binding for YCSB.
  *
  * Submitted by Luca Garulli on 5/10/2012.
@@ -18,6 +35,7 @@ import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.yahoo.ycsb.ByteIterator;
 import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
+import com.yahoo.ycsb.Status;
 import com.yahoo.ycsb.StringByteIterator;
 
 import java.util.HashMap;
@@ -113,7 +131,7 @@ public class OrientDBClient extends DB {
    * @param values A HashMap of field/value pairs to insert in the record
    * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
    */
-  public int insert(String table, String key, HashMap<String, ByteIterator> values) {
+  public Status insert(String table, String key, HashMap<String, ByteIterator> values) {
     try {
       final ODocument document = new ODocument(CLASS);
       for (Entry<String, String> entry : StringByteIterator.getStringMap(values).entrySet())
@@ -121,11 +139,11 @@ public class OrientDBClient extends DB {
       document.save();
       dictionary.put(key, document);
 
-      return 0;
+      return Status.OK;
     } catch (Exception e) {
       e.printStackTrace();
     }
-    return 1;
+    return Status.ERROR;
   }
 
   @Override
@@ -136,14 +154,14 @@ public class OrientDBClient extends DB {
    * @param key The record key of the record to delete.
    * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
    */
-  public int delete(String table, String key) {
+  public Status delete(String table, String key) {
     try {
       dictionary.remove(key);
-      return 0;
+      return Status.OK;
     } catch (Exception e) {
       e.printStackTrace();
     }
-    return 1;
+    return Status.ERROR;
   }
 
   @Override
@@ -156,7 +174,7 @@ public class OrientDBClient extends DB {
    * @param result A HashMap of field/value pairs for the result
    * @return Zero on success, a non-zero error code on error or "not found".
    */
-  public int read(String table, String key, Set<String> fields, HashMap<String, ByteIterator> result) {
+  public Status read(String table, String key, Set<String> fields, HashMap<String, ByteIterator> result) {
     try {
       final ODocument document = dictionary.get(key);
       if (document != null) {
@@ -166,12 +184,12 @@ public class OrientDBClient extends DB {
         else
           for (String field : document.fieldNames())
             result.put(field, new StringByteIterator((String) document.field(field)));
-        return 0;
+        return Status.OK;
       }
     } catch (Exception e) {
       e.printStackTrace();
     }
-    return 1;
+    return Status.ERROR;
   }
 
   @Override
@@ -184,19 +202,19 @@ public class OrientDBClient extends DB {
    * @param values A HashMap of field/value pairs to update in the record
    * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
    */
-  public int update(String table, String key, HashMap<String, ByteIterator> values) {
+  public Status update(String table, String key, HashMap<String, ByteIterator> values) {
     try {
       final ODocument document = dictionary.get(key);
       if (document != null) {
         for (Entry<String, String> entry : StringByteIterator.getStringMap(values).entrySet())
           document.field(entry.getKey(), entry.getValue());
         document.save();
-        return 0;
+        return Status.OK;
       }
     } catch (Exception e) {
       e.printStackTrace();
     }
-    return 1;
+    return Status.ERROR;
   }
 
   @Override
@@ -210,7 +228,7 @@ public class OrientDBClient extends DB {
    * @param result A Vector of HashMaps, where each HashMap is a set field/value pairs for one record
    * @return Zero on success, a non-zero error code on error. See this class's description for a discussion of error codes.
    */
-  public int scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
+  public Status scan(String table, String startkey, int recordcount, Set<String> fields, Vector<HashMap<String, ByteIterator>> result) {
     try {
       final OIndexCursor entries = dictionary.getIndex().iterateEntriesMajor(startkey, true, true);
       while (entries.hasNext()) {
@@ -224,10 +242,10 @@ public class OrientDBClient extends DB {
           map.put(field, new StringByteIterator((String) document.field(field)));
       }
 
-      return 0;
+      return Status.OK;
     } catch (Exception e) {
       e.printStackTrace();
     }
-    return 1;
+    return Status.ERROR;
   }
 }
